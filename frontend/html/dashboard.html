@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Ordering - Dashboard</title>
+    <!-- Bootstrap CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <script src="../js/dashboard.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" style="width: 280px;">
+        <div class="sidebar-logo">
+            <img src="Logo.png" alt="Logo">
+            <h4>Food Ordering</h4>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="#" class="menu-item active" onclick="showContent('menuList')">
+                <i class="bi bi-book"></i>
+                <span>Menu Management</span>
+            </a>
+
+            <a href="#" class="menu-item" onclick="showContent('reports')">
+                <i class="bi bi-file-earmark-text"></i>
+                <span>Reports</span>
+            </a>
+
+            <a href="#" class="menu-item" onclick="logout()">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-area">
+        <!-- Menu Management Content -->
+        <div class="content-section active" id="menuList">
+            <div class="page-header">
+                <h2><i class="bi bi-book me-2"></i>Menu Items</h2>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>All Menu Items</h5>
+                    <button class="btn btn-light" onclick="showContent('addMenuItem')">
+                        <i class="bi bi-plus-circle me-2"></i>Add New Item
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" placeholder="Search menu items...">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Price</th>
+                                    <th>Category</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><img src="https://via.placeholder.com/50" alt="Food" style="border-radius: 5px;"></td>
+                                    <td>Pizza Margherita</td>
+                                    <td>Fresh mozzarella, tomato sauce</td>
+                                    <td>$12.99</td>
+                                    <td>Main Dish</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-custom" onclick="showEditForm('Pizza Margherita', 'Fresh mozzarella, tomato sauce', '12.99', 'Main Dish')">Edit</button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteMenuItem('Pizza Margherita')">Delete</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><img src="https://via.placeholder.com/50" alt="Food" style="border-radius: 5px;"></td>
+                                    <td>Caesar Salad</td>
+                                    <td>Fresh romaine lettuce with parmesan</td>
+                                    <td>$8.99</td>
+                                    <td>Salad</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-custom" onclick="showEditForm('Caesar Salad', 'Fresh romaine lettuce with parmesan', '8.99', 'Salad')">Edit</button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteMenuItem('Caesar Salad')">Delete</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Menu Item Content -->
+        <div class="content-section" id="addMenuItem">
+            <div class="page-header">
+                <h2><i class="bi bi-plus-circle me-2"></i>Add New Menu Item</h2>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">Item Name</label>
+                            <input type="text" class="form-control" placeholder="Enter item name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" rows="3" placeholder="Enter description"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Price</label>
+                                <input type="number" step="0.01" class="form-control" placeholder="0.00">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Category</label>
+                                <select class="form-select">
+                                    <option>Main Dish</option>
+                                    <option>Appetizer</option>
+                                    <option>Salad</option>
+                                    <option>Drinks</option>
+                                    <option>Dessert</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Upload Image</label>
+                            <input type="file" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Quantity Available</label>
+                            <input type="number" class="form-control" placeholder="0">
+                        </div>
+                        <button type="submit" class="btn btn-custom">Add Item</button>
+                        <button type="reset" class="btn btn-secondary">Reset</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="showContent('menuList')">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Menu List
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Menu Item Content -->
+        <div class="content-section" id="editMenuItem">
+            <div class="page-header">
+                <h2><i class="bi bi-pencil me-2"></i>Edit Menu Item</h2>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-body">
+                    <form id="edit-menu-item-form">
+                        <div class="mb-3">
+                            <label class="form-label">Item Name</label>
+                            <input type="text" class="form-control" id="edit-menu-name" placeholder="Enter item name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" rows="3" id="edit-menu-description" placeholder="Enter description"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Price</label>
+                                <input type="number" step="0.01" class="form-control" id="edit-menu-price" placeholder="0.00">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Category</label>
+                                <select class="form-select" id="edit-menu-category">
+                                    <option value="Main Dish">Main Dish</option>
+                                    <option value="Appetizer">Appetizer</option>
+                                    <option value="Salad">Salad</option>
+                                    <option value="Drinks">Drinks</option>
+                                    <option value="Dessert">Dessert</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Upload Image</label>
+                            <input type="file" class="form-control" id="edit-menu-image">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Quantity Available</label>
+                            <input type="number" class="form-control" id="edit-menu-quantity" placeholder="0">
+                        </div>
+                        <button type="button" class="btn btn-custom" onclick="updateMenuItemFromForm()">Update Item</button>
+                        <button type="button" class="btn btn-danger" onclick="deleteMenuItemFromEdit()">
+                            <i class="bi bi-trash me-2"></i>Delete Item
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="showContent('menuList')">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Menu List
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Content -->
+        <div class="content-section" id="reports">
+            <div class="page-header">
+                <h2><i class="bi bi-file-earmark-text me-2"></i>Sales Reports</h2>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-header card-header-custom">
+                    <h5 class="mb-0"><i class="bi bi-table me-2"></i>Sales Report</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3 d-flex justify-content-between">
+                        <div>
+                            <input type="text" class="form-control" placeholder="Search by order ID, customer name..." style="width: 300px;">
+                        </div>
+                        <div>
+                            <select class="form-select" style="width: 200px;">
+                                <option>All Time</option>
+                                <option>Today</option>
+                                <option>This Week</option>
+                                <option>This Month</option>
+                                <option>Last Month</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Date</th>
+                                    <th>Customer</th>
+                                    <th>Items</th>
+                                    <th>Quantity</th>
+                                    <th>Total Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>#1234</td>
+                                    <td>2024-01-15</td>
+                                    <td>John Doe</td>
+                                    <td>Pizza Margherita, Caesar Salad</td>
+                                    <td>2</td>
+                                    <td>$21.98</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-custom" onclick="showOrderDetails('1234', 'John Doe', 'Pizza Margherita, Caesar Salad', '2', '$21.98', 'Completed', '2024-01-15')">View Details</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>#1235</td>
+                                    <td>2024-01-15</td>
+                                    <td>Jane Smith</td>
+                                    <td>Burger, Fries</td>
+                                    <td>2</td>
+                                    <td>$14.99</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-custom" onclick="showOrderDetails('1235', 'Jane Smith', 'Burger, Fries', '2', '$14.99', 'Completed', '2024-01-15')">View Details</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>#1236</td>
+                                    <td>2024-01-14</td>
+                                    <td>Bob Johnson</td>
+                                    <td>Chicken Sandwich, Pepsi</td>
+                                    <td>2</td>
+                                    <td>$16.50</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-custom" onclick="showOrderDetails('1236', 'Bob Johnson', 'Chicken Sandwich, Pepsi', '2', '$16.50', 'Completed', '2024-01-14')">View Details</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>#1237</td>
+                                    <td>2024-01-14</td>
+                                    <td>Alice Williams</td>
+                                    <td>Pasta Carbonara, Garlic Bread</td>
+                                    <td>2</td>
+                                    <td>$28.50</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-custom" onclick="showOrderDetails('1237', 'Alice Williams', 'Pasta Carbonara, Garlic Bread', '2', '$28.50', 'Completed', '2024-01-14')">View Details</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>#1238</td>
+                                    <td>2024-01-13</td>
+                                    <td>Charlie Brown</td>
+                                    <td>Fish and Chips, Cola</td>
+                                    <td>2</td>
+                                    <td>$22.99</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-custom" onclick="showOrderDetails('1238', 'Charlie Brown', 'Fish and Chips, Cola', '2', '$22.99', 'Completed', '2024-01-13')">View Details</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div>
+                            <span class="text-muted">Showing 1-5 of 1,234 entries</span>
+                        </div>
+                        <nav>
+                            <ul class="pagination mb-0">
+                                <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="js/dashboard.js"></script>
+
+    <!-- Order Details Modal -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-labelledby="orderDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #222021 0%, #ba110c 100%); color: white;">
+                    <h5 class="modal-title" id="orderDetailsModalLabel">
+                        <i class="bi bi-receipt me-2"></i>Order Details - <span id="modal-order-id-title"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-info-circle me-2"></i>Order Information</h6>
+                            <p><strong>Order ID:</strong> <span id="modal-order-id" class="text-primary"></span></p>
+                            <p><strong>Date:</strong> <span id="modal-order-date"></span></p>
+                            <p><strong>Status:</strong> <span id="modal-status-badge" class="badge bg-success"><span id="modal-status"></span></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-person me-2"></i>Customer Information</h6>
+                            <p><strong>Customer Name:</strong> <span id="modal-customer-name"></span></p>
+                            <p><strong>Phone:</strong> +1 (555) 123-4567</p>
+                            <p><strong>Email:</strong> customer@example.com</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-bag me-2"></i>Order Items</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead style="background-color: #f8f9fa;">
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td id="modal-items"></td>
+                                        <td id="modal-quantity"></td>
+                                        <td>$10.99</td>
+                                        <td id="modal-total"></td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-active">
+                                        <th colspan="3" class="text-end">Total:</th>
+                                        <th id="modal-total-footer"></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Note:</strong> Order details are for reference only.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-custom">
+                        <i class="bi bi-printer me-2"></i>Print Receipt
+                    </button>
+                    <button type="button" class="btn btn-primary">
+                        <i class="bi bi-download me-2"></i>Download PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
+
