@@ -3,21 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS - Order Management</title>
+    <title>Ramen X - POS</title>
     <!-- Bootstrap CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../css/pos.css">
+    <style>
+        /* Compact, modern modal styling */
+        .modal-content { border: none; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .modal-header { padding: .5rem .75rem; }
+        .modal-body { padding: .75rem .75rem; }
+        .modal-footer { padding: .5rem .75rem; }
+        .modal-title { font-size: 1rem; }
+        .table-sm th, .table-sm td { padding: .4rem .5rem; }
+
+        /* Modern table styling */
+        .table-modern { border-collapse: separate; border-spacing: 0; }
+        .table-modern thead { background: linear-gradient(135deg, #222021 0%, #ba110c 100%); color: #fff; }
+        .table-modern thead th { border: none; }
+        .table-modern tbody tr { transition: background-color .15s ease, transform .05s ease; }
+        .table-modern tbody tr:hover { background-color: rgba(186, 17, 12, 0.06); }
+        .table-modern tbody tr:first-child td { border-top: none; }
+        .table-modern td, .table-modern th { vertical-align: middle; }
+        .table-modern { border-radius: 10px; overflow: hidden; }
+        .table-modern-wrapper { border: 1px solid #e9ecef; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+
+        /* Button hover/active effects */
+        .btn { transition: background-color .15s ease, color .15s ease, transform .05s ease; }
+        .btn:hover { transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn-warning:hover { background-color: #e0a800; color: #212529; }
+        .btn-primary:hover { background-color: #0b5ed7; }
+        .btn-success:hover { background-color: #157347; }
+        .btn-secondary:hover { background-color: #5c636a; }
+    </style>
 </head>
 <body>
     <div class="pos-container">
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-logo">
-                <img src="../Logo.png" alt="Logo">
-                <h4>Food Ordering POS</h4>
+                <img src="../assets/Logo.png" alt="Logo">
+                <h4>Ramen X POS</h4>
             </div>
 
             <div class="sidebar-menu">
@@ -25,7 +54,7 @@
                     <i class="bi bi-list-check"></i>
                     <span>Order Management</span>
                 </a>
-                <a href="#" class="menu-item">
+                <a href="#" class="menu-item" onclick="logout()">
                     <i class="bi bi-box-arrow-right"></i>
                     <span>Logout</span>
                 </a>
@@ -55,8 +84,8 @@
                 <div class="mb-3">
                     <input type="text" class="form-control form-control-sm" id="searchOrdersInput" placeholder="Search by Order ID, Customer, or Items..." style="max-width: 400px;">
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0">
+                <div class="table-responsive table-modern-wrapper">
+                    <table class="table table-sm table-hover table-modern mb-0" id="ordersTable">
                         <thead>
                             <tr>
                                 <th>Order ID</th>
@@ -73,18 +102,27 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <small class="text-muted" id="ordersSummary"></small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="ordersPagination"></ul>
+                    </nav>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Bootstrap JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Custom JS -->
+    <script src="../js/api.js"></script>
     <script src="../js/pos.js"></script>
 
     <!-- Filter Modal -->
     <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-sm">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header py-2 px-3" style="background: linear-gradient(135deg, #222021 0%, #ba110c 100%); color: white;">
                     <h6 class="modal-title mb-0" id="filterModalLabel">
@@ -96,7 +134,7 @@
                     <div class="d-grid gap-2">
                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyFilter('all')">All Orders</button>
                         <button type="button" class="btn btn-outline-warning btn-sm" onclick="applyFilter('pending')">Pending</button>
-                        <button type="button" class="btn btn-outline-info btn-sm" onclick="applyFilter('processing')">Processing</button>
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="applyFilter('preparing')">Preparing</button>
                         <button type="button" class="btn btn-outline-success btn-sm" onclick="applyFilter('completed')">Completed</button>
                         <button type="button" class="btn btn-outline-danger btn-sm" onclick="applyFilter('cancelled')">Cancelled</button>
                     </div>
@@ -107,7 +145,7 @@
 
     <!-- Order Details Modal -->
     <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-labelledby="orderDetailsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header py-2 px-3" style="background: linear-gradient(135deg, #222021 0%, #ba110c 100%); color: white;">
                     <h6 class="modal-title mb-0" id="orderDetailsModalLabel">
@@ -126,15 +164,16 @@
                         <div class="col-md-6">
                             <small class="text-muted d-block mb-1"><i class="bi bi-person"></i> Customer</small>
                             <small class="d-block"><strong>Name:</strong> <span id="modal-customer-name"></span></small>
-                            <small class="d-block"><strong>Phone:</strong> <span id="modal-customer-phone">+1 (555) 123-4567</span></small>
-                            <small class="d-block"><strong>Email:</strong> <span id="modal-customer-email">customer@example.com</span></small>
+                            <small class="d-block"><strong>Phone:</strong> <span id="modal-customer-phone"></span></small>
+                            <small class="d-block"><strong>Email:</strong> <span id="modal-customer-email"></span></small>
+                            <small class="d-block"><strong>Address:</strong> <span id="modal-customer-address"></span></small>
                         </div>
                     </div>
                     
                     <div class="mt-2">
                         <small class="text-muted d-block mb-1"><i class="bi bi-bag"></i> Items</small>
                         <div class="table-responsive">
-                            <table class="table table-sm table-bordered mb-0">
+                            <table class="table table-sm table-bordered table-modern mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Item</th>
@@ -156,14 +195,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer py-2 px-3">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-sm btn-warning" onclick="changeOrderStatus()">
-                        <i class="bi bi-pencil me-1"></i>Update
+                <div class="modal-footer py-2 px-3 d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-sm btn-secondary me-auto" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="btnAdvance" class="btn btn-sm btn-primary" onclick="advanceOrderStatus()">
+                        <i class="bi bi-arrow-right-circle me-1"></i>Next
                     </button>
-                    <button type="button" class="btn btn-sm btn-custom" onclick="printOrder()">
-                        <i class="bi bi-printer me-1"></i>Print
-                    </button>
+                    
                 </div>
             </div>
         </div>

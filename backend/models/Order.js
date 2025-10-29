@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
+  orderCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -31,11 +36,9 @@ const orderSchema = new mongoose.Schema({
   },
   deliveryAddress: {
     type: String,
-    required: true,
   },
   phone: {
     type: String,
-    required: true,
   },
   status: {
     type: String,
@@ -49,7 +52,7 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'card', 'online'],
+    enum: ['cash', 'card', 'online', 'gcash', 'maya'],
   },
 }, {
   timestamps: true,

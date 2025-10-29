@@ -6,15 +6,15 @@ const User = require('../models/User');
 // @access  Public
 const register = async (req, res) => {
   try {
-    const { email, username, password, role } = req.body;
+    const { email, username, password, role, name } = req.body;
 
     // Validation based on role
     const userRole = role || 'customer';
 
     if (userRole === 'customer') {
-      // Customer: requires email and password only
-      if (!email || !password) {
-        return res.status(400).json({ message: 'Please provide email and password' });
+      // Customer: requires name, email and password
+      if (!name || !email || !password) {
+        return res.status(400).json({ message: 'Please provide name, email and password' });
       }
 
       // Check if user already exists
@@ -46,6 +46,7 @@ const register = async (req, res) => {
     };
 
     if (userRole === 'customer') {
+      userData.name = name;
       userData.email = email;
     } else {
       userData.username = username;
@@ -67,6 +68,7 @@ const register = async (req, res) => {
       token,
       user: {
         id: user._id,
+        name: user.name,
         email: user.email,
         username: user.username,
         role: user.role,
@@ -123,6 +125,7 @@ const login = async (req, res) => {
       token,
       user: {
         id: user._id,
+        name: user.name,
         email: user.email,
         username: user.username,
         role: user.role,
@@ -165,10 +168,36 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// @desc    Delete a user (Admin only). Admin accounts cannot be deleted
+// @access  Private (Admin)
+const deleteUser = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Cannot delete admin accounts' });
+    }
+
+    await user.deleteOne();
+    res.json({ message: 'User deleted', id: req.params.id });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
   getProfile,
   getAllUsers,
+  deleteUser,
 };
 
