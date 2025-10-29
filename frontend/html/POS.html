@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS - Order Management</title>
+    <!-- Bootstrap CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../css/pos.css">
+</head>
+<body>
+    <div class="pos-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-logo">
+                <img src="../Logo.png" alt="Logo">
+                <h4>Food Ordering POS</h4>
+            </div>
+
+            <div class="sidebar-menu">
+                <a href="#" class="menu-item active">
+                    <i class="bi bi-list-check"></i>
+                    <span>Order Management</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="pos-header py-2">
+                <div>
+                    <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Order Management</h5>
+                    <small>View and manage all orders</small>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-sm btn-pos" onclick="filterOrders()">
+                        <i class="bi bi-filter me-1"></i>Filter
+                    </button>
+                    <button class="btn btn-sm btn-pos" onclick="refreshOrders()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="left-panel" style="width: 100%; padding: 1rem;">
+                <div class="mb-3">
+                    <input type="text" class="form-control form-control-sm" id="searchOrdersInput" placeholder="Search by Order ID, Customer, or Items..." style="max-width: 400px;">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Date/Time</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderManagementTable">
+                            <!-- Orders will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="../js/pos.js"></script>
+
+    <!-- Filter Modal -->
+    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header py-2 px-3" style="background: linear-gradient(135deg, #222021 0%, #ba110c 100%); color: white;">
+                    <h6 class="modal-title mb-0" id="filterModalLabel">
+                        <i class="bi bi-filter me-2"></i>Filter Orders
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3 px-3">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyFilter('all')">All Orders</button>
+                        <button type="button" class="btn btn-outline-warning btn-sm" onclick="applyFilter('pending')">Pending</button>
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="applyFilter('processing')">Processing</button>
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="applyFilter('completed')">Completed</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="applyFilter('cancelled')">Cancelled</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-labelledby="orderDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header py-2 px-3" style="background: linear-gradient(135deg, #222021 0%, #ba110c 100%); color: white;">
+                    <h6 class="modal-title mb-0" id="orderDetailsModalLabel">
+                        <i class="bi bi-receipt me-2"></i>Order <span id="modal-order-id"></span>
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-2 px-3">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block mb-1"><i class="bi bi-info-circle"></i> Order Info</small>
+                            <small class="d-block"><strong>ID:</strong> <span id="modal-order-id-info" class="text-primary"></span></small>
+                            <small class="d-block"><strong>Date:</strong> <span id="modal-order-date"></span></small>
+                            <small class="d-block"><strong>Status:</strong> <span id="modal-status-badge"></span></small>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block mb-1"><i class="bi bi-person"></i> Customer</small>
+                            <small class="d-block"><strong>Name:</strong> <span id="modal-customer-name"></span></small>
+                            <small class="d-block"><strong>Phone:</strong> <span id="modal-customer-phone">+1 (555) 123-4567</span></small>
+                            <small class="d-block"><strong>Email:</strong> <span id="modal-customer-email">customer@example.com</span></small>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-2">
+                        <small class="text-muted d-block mb-1"><i class="bi bi-bag"></i> Items</small>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Qty</th>
+                                        <th>Price</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modal-items-table">
+                                    <!-- Items will be loaded here -->
+                                </tbody>
+                                <tfoot class="table-active">
+                                    <tr>
+                                        <th colspan="3" class="text-end">Total:</th>
+                                        <th id="modal-total"></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 px-3">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-sm btn-warning" onclick="changeOrderStatus()">
+                        <i class="bi bi-pencil me-1"></i>Update
+                    </button>
+                    <button type="button" class="btn btn-sm btn-custom" onclick="printOrder()">
+                        <i class="bi bi-printer me-1"></i>Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
+

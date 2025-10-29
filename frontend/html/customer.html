@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Ordering - Customer</title>
+    <!-- Bootstrap CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../css/customer.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <img src="../Logo.png" alt="Logo">
+            <h4>Food Ordering</h4>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="#" class="menu-item active" onclick="showSection('menu')">
+                <i class="bi bi-menu-button"></i>
+                <span>Menu</span>
+            </a>
+            <a href="#" class="menu-item" onclick="showSection('cart')">
+                <i class="bi bi-cart4"></i>
+                <span>Cart (<span id="cartCount">0</span>)</span>
+            </a>
+            <a href="#" class="menu-item" onclick="showSection('orders')">
+                <i class="bi bi-clock-history"></i>
+                <span>My Orders</span>
+            </a>
+            <a href="#" class="menu-item" onclick="logout()">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-area">
+        <!-- Menu Section -->
+        <div class="content-section active" id="menu">
+            <div class="page-header">
+                <h2><i class="bi bi-menu-button me-2"></i>Menu</h2>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="mb-3">
+                <input type="text" class="form-control" id="menuSearch" placeholder="Search menu items...">
+            </div>
+            
+            <div class="category-filter mb-3">
+                <button class="btn category-btn active" onclick="filterCategory('all')">All</button>
+                <button class="btn category-btn" onclick="filterCategory('Main Dish')">Main Dish</button>
+                <button class="btn category-btn" onclick="filterCategory('Appetizer')">Appetizer</button>
+                <button class="btn category-btn" onclick="filterCategory('Salad')">Salad</button>
+                <button class="btn category-btn" onclick="filterCategory('Drinks')">Drinks</button>
+                <button class="btn category-btn" onclick="filterCategory('Dessert')">Dessert</button>
+            </div>
+
+            <!-- Menu Grid -->
+            <div class="menu-grid" id="menuGrid">
+                <!-- Menu items will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Cart Section -->
+        <div class="content-section" id="cart">
+            <div class="page-header">
+                <h2><i class="bi bi-cart4 me-2"></i>Shopping Cart</h2>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-body">
+                    <div id="cartBody">
+                        <div class="empty-cart">
+                            <i class="bi bi-cart-x"></i>
+                            <p>Your cart is empty</p>
+                            <button class="btn btn-custom" onclick="showSection('menu')">Browse Menu</button>
+                        </div>
+                    </div>
+
+                    <div id="cartSummary" style="display: none;">
+                        <div class="cart-total">
+                            <div class="total-row">
+                                <span class="total-amount">Total:</span>
+                                <span class="total-amount" id="total">$0.00</span>
+                            </div>
+                        </div>
+
+                        <div class="cart-actions mt-3">
+                            <button class="btn btn-custom w-100" onclick="placeOrder()">
+                                <i class="bi bi-check-circle me-2"></i>Place Order
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders Section -->
+        <div class="content-section" id="orders">
+            <div class="page-header">
+                <h2><i class="bi bi-clock-history me-2"></i>My Orders</h2>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Date/Time</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTable">
+                        <!-- Orders will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="../js/customer.js"></script>
+
+    <!-- Order Tracking Modal -->
+    <div class="modal fade" id="orderTrackingModal" tabindex="-1" aria-labelledby="orderTrackingModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header py-2 px-3" style="background: linear-gradient(135deg, #222021 0%, #ba110c 100%); color: white;">
+                    <h6 class="modal-title mb-0" id="orderTrackingModalLabel">
+                        <i class="bi bi-truck me-2"></i>Order Tracking - <span id="track-order-id"></span>
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-2 px-3">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block mb-1"><i class="bi bi-info-circle"></i> Order Info</small>
+                            <small class="d-block"><strong>Order ID:</strong> <span id="track-order-id-info" class="text-primary"></span></small>
+                            <small class="d-block"><strong>Date:</strong> <span id="track-order-date"></span></small>
+                            <small class="d-block"><strong>Status:</strong> <span id="track-status-badge"></span></small>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block mb-1"><i class="bi bi-clock"></i> Timeline</small>
+                            <small class="d-block"><strong>Placed:</strong> <span id="track-placed-time"></span></small>
+                            <small class="d-block"><strong>Estimated:</strong> <span id="track-estimated-time"></span></small>
+                            <small class="d-block"><strong>Driver:</strong> <span id="track-driver">On the way</span></small>
+                        </div>
+                    </div>
+                    
+                    <div class="tracking-timeline">
+                        <small class="text-muted d-block mb-2"><i class="bi bi-list-ul"></i> Order Items</small>
+                        <div id="track-items-list">
+                            <!-- Items will be loaded here -->
+                        </div>
+                    </div>
+
+                    <div class="cart-total mt-3">
+                        <div class="total-row">
+                            <span class="total-amount">Total:</span>
+                            <span class="total-amount" id="track-total"></span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3 py-2">
+                        <small><i class="bi bi-info-circle me-2"></i>We'll notify you when your order status changes.</small>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 px-3">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-sm btn-custom" onclick="refreshTracking()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
+
