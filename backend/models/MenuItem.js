@@ -22,8 +22,8 @@ const menuItemSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['appetizer', 'main', 'dessert', 'beverage', 'other'],
-    default: 'main',
+    trim: true,
+    default: '',
   },
   isAvailable: {
     type: Boolean,

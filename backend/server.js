@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
+const path = require('path');
 
 // Load environment variables
 dotenv.config();
@@ -23,6 +24,12 @@ app.get('/', (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/menu', require('./routes/menu'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/categories', require('./routes/categories'));
+app.use('/api/uploads', require('./routes/uploads'));
+
+// Static file serving for uploaded images
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Test endpoint to check API
 app.get('/api/test', (req, res) => {

@@ -1,32 +1,44 @@
-// Menu Items Data
-const menuItems = [
-    { id: 1, name: "Pizza Margherita", description: "Fresh mozzarella, tomato sauce", price: 12.99, category: "Main Dish", image: "https://via.placeholder.com/200" },
-    { id: 2, name: "Pasta Carbonara", description: "Creamy pasta with bacon", price: 14.99, category: "Main Dish", image: "https://via.placeholder.com/200" },
-    { id: 3, name: "Caesar Salad", description: "Fresh romaine lettuce with parmesan", price: 8.99, category: "Salad", image: "https://via.placeholder.com/200" },
-    { id: 4, name: "Garlic Bread", description: "Toasted bread with garlic butter", price: 5.99, category: "Appetizer", image: "https://via.placeholder.com/200" },
-    { id: 5, name: "Cola", description: "Refreshing cola drink", price: 2.99, category: "Drinks", image: "https://via.placeholder.com/200" },
-    { id: 6, name: "Chicken Burger", description: "Grilled chicken burger", price: 10.99, category: "Main Dish", image: "https://via.placeholder.com/200" },
-    { id: 7, name: "French Fries", description: "Crispy golden fries", price: 4.99, category: "Appetizer", image: "https://via.placeholder.com/200" },
-    { id: 8, name: "Orange Juice", description: "Freshly squeezed orange juice", price: 3.99, category: "Drinks", image: "https://via.placeholder.com/200" },
-    { id: 9, name: "Greek Salad", description: "Fresh vegetables with feta cheese", price: 9.99, category: "Salad", image: "https://via.placeholder.com/200" },
-    { id: 10, name: "Chocolate Cake", description: "Rich chocolate cake", price: 6.99, category: "Dessert", image: "https://via.placeholder.com/200" },
-];
+// Menu Items Data (loaded from API)
+let menuItems = [];
 
-// Customer Orders Data
-const customerOrders = [
-    { id: '#1234', date: '2024-01-15 14:30', items: 'Pizza Margherita, Caesar Salad', total: '$21.98', status: 'completed' },
-    { id: '#1235', date: '2024-01-15 15:00', items: 'Burger, Fries', total: '$14.99', status: 'processing' },
-    { id: '#1236', date: '2024-01-15 16:00', items: 'Pasta Carbonara', total: '$14.99', status: 'pending' },
-];
+// Customer Orders Data (loaded from API)
+let customerOrders = [];
 
 // Cart array
 let cart = [];
 let currentCategory = 'all';
+let availableCategories = [];
+let addToCartContext = { itemId: null };
 
 // Initialize page
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Auth guard
+        if (!window.api || !window.api.getAuthToken() || !window.api.getAuthToken().length) {
+            // Not logged in; redirect to login page at project root
+            window.location.href = '../login.html';
+            return;
+        }
+    } catch (_) {
+        // If localStorage fails, still allow page to render
+    }
+
+    await loadMenuFromAPI();
+    await loadCategoriesFromAPI();
+    renderCategoryButtons();
+    await loadCustomerOrders();
     displayMenuItems();
-    loadCustomerOrders();
+
+    // Connectivity check
+    try {
+        if (window.api) {
+            await window.api.apiRequest('/api/test');
+            // Optionally indicate connectivity in console
+            console.log('Backend API reachable at', window.api.API_BASE_URL);
+        }
+    } catch (err) {
+        console.warn('Backend API not reachable:', err && err.message ? err.message : err);
+    }
     
     // Search functionality
     document.getElementById('menuSearch').addEventListener('input', function(e) {
@@ -62,6 +74,37 @@ function showSection(sectionId) {
     }
 }
 
+// Load menu from API
+async function loadMenuFromAPI() {
+    try {
+        if (window.api) {
+            const response = await window.api.apiRequest('/api/menu');
+            if (response && response.items) {
+                menuItems = response.items.map(item => {
+                    const resolveImage = () => {
+                        if (!item.image) return '../assets/Logo.png';
+                        if (/^https?:\/\//i.test(item.image)) return item.image;
+                        return `${window.api.API_BASE_URL}/uploads/${(item.image || '').replace(/^\/+/, '')}`;
+                    };
+                    return ({
+                        id: item._id || item.id,
+                        name: item.name,
+                        description: item.description || '',
+                        price: item.price,
+                        category: item.category || 'Other',
+                        image: resolveImage(),
+                        isAvailable: item.isAvailable !== false,
+                    });
+                });
+                return true;
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load menu from API:', err);
+    }
+    return false;
+}
+
 // Display menu items
 function displayMenuItems(items = menuItems) {
     const menuGrid = document.getElementById('menuGrid');
@@ -75,12 +118,12 @@ function displayMenuItems(items = menuItems) {
         const itemCard = document.createElement('div');
         itemCard.className = 'menu-item-card';
         itemCard.innerHTML = `
-            <img src="${item.image}" alt="${item.name}" onerror="this.src='https://via.placeholder.com/200'">
+            <img src="${item.image}" alt="${item.name}" onerror="this.src='../assets/Logo.png'">
             <div class="menu-item-card-body">
                 <h5>${item.name}</h5>
                 <p>${item.description}</p>
-                <div class="price">$${item.price.toFixed(2)}</div>
-                <button class="btn btn-custom btn-sm w-100" onclick="addToCart(${item.id})">
+                <div class="price">₱${item.price.toFixed(2)}</div>
+                <button class="btn btn-custom btn-sm w-100" onclick="openAddToCartModal('${item.id}')">
                     <i class="bi bi-cart-plus me-2"></i>Add to Cart
                 </button>
             </div>
@@ -101,19 +144,87 @@ function filterCategory(category) {
     displayMenuItems();
 }
 
+// Load categories and render filter buttons
+async function loadCategoriesFromAPI() {
+    try {
+        if (window.api) {
+            const res = await window.api.apiRequest('/api/categories');
+            if (res && Array.isArray(res.categories)) {
+                availableCategories = res.categories.map(c => c.name);
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn('Failed to load categories:', err && err.message ? err.message : err);
+    }
+    // Fallback list if API not available
+    availableCategories = ['Main Dish','Appetizer','Salad','Drinks','Dessert'];
+}
+
+function renderCategoryButtons() {
+    const container = document.querySelector('.category-filter');
+    if (!container) return;
+    container.innerHTML = '';
+    const allBtn = document.createElement('button');
+    allBtn.className = 'btn category-btn active';
+    allBtn.textContent = 'All';
+    allBtn.onclick = function(e){ window.event = e; filterCategory('all'); };
+    container.appendChild(allBtn);
+    availableCategories.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'btn category-btn';
+        btn.textContent = name;
+        btn.onclick = function(e){ window.event = e; filterCategory(name); };
+        container.appendChild(btn);
+    });
+}
+
 // Add to cart
-function addToCart(itemId) {
-    const item = menuItems.find(i => i.id === itemId);
-    const existingItem = cart.find(c => c.id === itemId);
+function addToCart(itemId, quantity = 1) {
+    const item = menuItems.find(i => String(i.id) === String(itemId));
+    if (!item) return;
+    const existingItem = cart.find(c => String(c.id) === String(itemId));
+
+    const qty = Math.max(1, parseInt(quantity, 10) || 1);
 
     if (existingItem) {
-        existingItem.quantity += 1;
+        existingItem.quantity += qty;
     } else {
-        cart.push({ ...item, quantity: 1 });
+        cart.push({ ...item, quantity: qty });
     }
 
     updateCartCount();
-    alert(`${item.name} added to cart!`);
+}
+
+function openAddToCartModal(itemId) {
+    addToCartContext.itemId = itemId;
+    const item = menuItems.find(i => String(i.id) === String(itemId));
+    if (!item) return;
+    document.getElementById('add-cart-name').textContent = item.name;
+    document.getElementById('add-cart-desc').textContent = item.description || '';
+    document.getElementById('add-cart-price').textContent = `₱${item.price.toFixed(2)}`;
+    const img = document.getElementById('add-cart-image');
+    img.src = item.image;
+    img.onerror = function(){ this.src = '../assets/Logo.png'; };
+    const qtyInput = document.getElementById('add-cart-qty');
+    qtyInput.value = 1;
+    const modal = new bootstrap.Modal(document.getElementById('addToCartModal'));
+    modal.show();
+}
+
+function changeAddQty(delta) {
+    const qtyInput = document.getElementById('add-cart-qty');
+    const current = parseInt(qtyInput.value, 10) || 1;
+    qtyInput.value = Math.max(1, current + delta);
+}
+
+function confirmAddToCart() {
+    const qtyInput = document.getElementById('add-cart-qty');
+    const qty = parseInt(qtyInput.value, 10) || 1;
+    addToCart(addToCartContext.itemId, qty);
+    const modalEl = document.getElementById('addToCartModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 }
 
 // Update cart count
@@ -147,21 +258,26 @@ function updateCart() {
             const cartItem = document.createElement('div');
             cartItem.className = 'cart-item';
             cartItem.innerHTML = `
-                <div class="cart-item-header">
-                    <span class="cart-item-name">${item.name}</span>
-                    <span class="cart-item-price">$${itemTotal.toFixed(2)}</span>
-                </div>
-                <div class="cart-item-controls">
-                    <button class="btn quantity-btn" onclick="updateQuantity(${item.id}, -1)">
-                        <i class="bi bi-dash"></i>
-                    </button>
-                    <input type="number" class="quantity-input" value="${item.quantity}" readonly>
-                    <button class="btn quantity-btn" onclick="updateQuantity(${item.id}, 1)">
-                        <i class="bi bi-plus"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger ms-auto" onclick="removeFromCart(${item.id})">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                <div class="d-flex align-items-start gap-2">
+                    <img src="${item.image}" alt="${item.name}" onerror="this.src='../assets/Logo.png'" style="width:56px; height:56px; object-fit:cover; border-radius:6px;">
+                    <div class="flex-grow-1">
+                        <div class="cart-item-header">
+                            <span class="cart-item-name">${item.name}</span>
+                            <span class="cart-item-price">₱${itemTotal.toFixed(2)}</span>
+                        </div>
+                        <div class="cart-item-controls">
+                            <button class="btn quantity-btn" onclick="updateQuantity('${item.id}', -1)">
+                                <i class="bi bi-dash"></i>
+                            </button>
+                            <input type="number" class="quantity-input" value="${item.quantity}" readonly>
+                            <button class="btn quantity-btn" onclick="updateQuantity('${item.id}', 1)">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger ms-auto" onclick="removeFromCart('${item.id}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             `;
             cartBody.appendChild(cartItem);
@@ -174,7 +290,7 @@ function updateCart() {
 
 // Update quantity
 function updateQuantity(itemId, change) {
-    const item = cart.find(c => c.id === itemId);
+    const item = cart.find(c => String(c.id) === String(itemId));
     if (item) {
         item.quantity = Math.max(1, item.quantity + change);
         updateCart();
@@ -184,67 +300,152 @@ function updateQuantity(itemId, change) {
 
 // Remove from cart
 function removeFromCart(itemId) {
-    const item = cart.find(c => c.id === itemId);
-    if (item && confirm(`Remove ${item.name} from cart?`)) {
-        cart = cart.filter(item => item.id !== itemId);
-        updateCart();
-        updateCartCount();
-    }
+    const item = cart.find(c => String(c.id) === String(itemId));
+    if (!item) return;
+    Swal.fire({
+        icon: 'warning',
+        title: 'Remove item?',
+        text: item.name,
+        showCancelButton: true,
+        confirmButtonText: 'Remove',
+    }).then(res => {
+        if (res.isConfirmed) {
+            cart = cart.filter(ci => String(ci.id) !== String(itemId));
+            updateCart();
+            updateCartCount();
+        }
+    });
 }
 
 // Update totals
 function updateTotals() {
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+    document.getElementById('total').textContent = `₱${total.toFixed(2)}`;
 }
 
-// Place order
-function placeOrder() {
+function openOrderSummaryModal() {
     if (cart.length === 0) {
-        alert('Your cart is empty. Please add items to proceed.');
+        Swal.fire({ icon: 'info', title: 'Cart is empty', text: 'Please add items to proceed.' });
         return;
     }
-
+    // Build summary table
+    const tbody = document.getElementById('summaryTableBody');
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    tbody.innerHTML = '';
+    cart.forEach(ci => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${ci.name}</td>
+            <td class="text-center">${ci.quantity}</td>
+            <td class="text-end">₱${ci.price.toFixed(2)}</td>
+            <td class="text-end">₱${(ci.price * ci.quantity).toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    document.getElementById('summaryTotal').textContent = `₱${total.toFixed(2)}`;
+    // Reset form
+    document.getElementById('summaryAddress').value = '';
+    const phoneEl = document.getElementById('summaryPhone');
+    if (phoneEl) phoneEl.value = '';
+    document.getElementById('summary-cod').checked = true;
+    const modal = new bootstrap.Modal(document.getElementById('orderSummaryModal'));
+    modal.show();
+}
 
-    const orderDetails = {
-        items: cart,
-        total: total,
-        timestamp: new Date().toISOString()
-    };
-
-    alert('Order placed successfully!\nTotal: $' + total.toFixed(2) + '\n(This is a demo - integrate with backend for real processing.)');
+async function confirmOrder() {
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const address = (document.getElementById('summaryAddress').value || '').trim();
+    const phone = (document.getElementById('summaryPhone').value || '').trim();
+    const methodEl = document.querySelector('input[name="summaryPayment"]:checked');
+    const selected = methodEl ? methodEl.value : 'cod';
+    const paymentMethod = selected === 'cod' ? 'cash' : 'gcash';
     
-    // Add to customer orders
-    const newOrder = {
-        id: '#1237',
-        date: new Date().toLocaleString(),
-        items: cart.map(i => i.name).join(', '),
-        total: '$' + total.toFixed(2),
-        status: 'pending'
-    };
-    customerOrders.unshift(newOrder);
+    try {
+        if (window.api) {
+            const orderPayload = {
+                items: cart,
+                total: total,
+                deliveryAddress: address,
+                phone,
+                paymentMethod,
+            };
+            await window.api.apiRequest('/api/orders', {
+                method: 'POST',
+                body: orderPayload,
+                auth: true,
+            });
+            await Swal.fire({ icon: 'success', title: 'Order placed', text: 'Total: ₱' + total.toFixed(2), timer: 1500, showConfirmButton: false });
+        }
+    } catch (err) {
+        console.error('Failed to place order via API:', err && err.message ? err.message : err);
+        Swal.fire({ icon: 'error', title: 'Failed to place order', text: err.message || 'Unknown error' });
+        return;
+    }
     
-    // Clear cart
+    const summaryModalEl = document.getElementById('orderSummaryModal');
+    const summaryModal = bootstrap.Modal.getInstance(summaryModalEl);
+    if (summaryModal) summaryModal.hide();
+    
     cart = [];
     updateCart();
     updateCartCount();
-    
-    // Load orders
-    loadCustomerOrders();
+    await loadCustomerOrders();
 }
 
-// Load customer orders
-function loadCustomerOrders() {
+// Load customer orders from API
+async function loadCustomerOrders() {
+    try {
+        if (window.api) {
+            const response = await window.api.apiRequest('/api/orders', { auth: true });
+            if (response && response.orders) {
+                // Map backend orders to frontend format
+                customerOrders = response.orders.map(order => {
+                    const items = order.items.map(item => {
+                        const name = item.menuItem?.name || item.name || 'Unknown Item';
+                        return name;
+                    }).join(', ');
+                    
+                    const statusMap = {
+                        'pending': 'pending',
+                        'confirmed': 'pending',
+                        'preparing': 'preparing',
+                        'ready': 'preparing',
+                        'out-for-delivery': 'preparing',
+                        'delivered': 'completed',
+                        'cancelled': 'cancelled',
+                    };
+                    
+                    return {
+                        id: order._id || order.id,
+                        displayId: order.orderCode || (order._id || order.id),
+                        date: order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString(),
+                        items: items,
+                        total: '₱' + (order.totalAmount || order.total || 0).toFixed(2),
+                        status: statusMap[order.status] || 'pending',
+                        orderData: order, // Keep full order for tracking
+                    };
+                });
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load orders from API:', err);
+        customerOrders = [];
+    }
+    
     const tableBody = document.getElementById('ordersTable');
     tableBody.innerHTML = '';
+    
+    if (customerOrders.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No orders found</td></tr>';
+        return;
+    }
     
     customerOrders.forEach(order => {
         const row = document.createElement('tr');
         const statusBadge = getStatusBadge(order.status);
         
         row.innerHTML = `
-            <td>${order.id}</td>
+            <td>${order.displayId ? order.displayId : ('#' + order.id.substring(0, 8))}</td>
             <td>${order.date}</td>
             <td>${order.items}</td>
             <td>${order.total}</td>
@@ -263,20 +464,57 @@ function loadCustomerOrders() {
 function getStatusBadge(status) {
     const badges = {
         'pending': '<span class="badge badge-pending">Pending</span>',
-        'processing': '<span class="badge badge-processing">Processing</span>',
+        'preparing': '<span class="badge badge-processing">Preparing</span>',
         'completed': '<span class="badge badge-completed">Completed</span>'
     };
+    // Backward compatibility: show Preparing for legacy 'processing'
+    if (status === 'processing') return '<span class="badge badge-processing">Preparing</span>';
     return badges[status] || '';
 }
 
 let currentTrackingOrderId = '';
 
 // Track order
-function trackOrder(orderId) {
+async function trackOrder(orderId) {
     currentTrackingOrderId = orderId;
     
-    // Find the order
-    const order = customerOrders.find(o => o.id === orderId);
+    // Try to fetch latest order from API
+    let order = customerOrders.find(o => o.id === orderId);
+    let orderData = order?.orderData;
+    
+    if (!order && window.api) {
+        try {
+            const response = await window.api.apiRequest(`/api/orders/${orderId}`, { auth: true });
+            if (response && response.order) {
+                orderData = response.order;
+                const items = orderData.items.map(item => {
+                    const name = item.menuItem?.name || item.name || 'Unknown Item';
+                    return name;
+                }).join(', ');
+                
+                const statusMap = {
+                    'pending': 'pending',
+                    'confirmed': 'pending',
+                    'preparing': 'processing',
+                    'ready': 'processing',
+                    'out-for-delivery': 'processing',
+                    'delivered': 'completed',
+                    'cancelled': 'cancelled',
+                };
+                
+                order = {
+                    id: orderData._id || orderData.id,
+                    date: orderData.createdAt ? new Date(orderData.createdAt).toLocaleString() : new Date().toLocaleString(),
+                    items: items,
+                    total: '$' + (orderData.totalAmount || orderData.total || 0).toFixed(2),
+                    status: statusMap[orderData.status] || 'pending',
+                    orderData: orderData,
+                };
+            }
+        } catch (err) {
+            console.error('Failed to fetch order:', err);
+        }
+    }
     
     if (!order) {
         alert('Order not found');
@@ -284,20 +522,17 @@ function trackOrder(orderId) {
     }
     
     // Populate modal with order details
-    document.getElementById('track-order-id').textContent = orderId;
-    document.getElementById('track-order-id-info').textContent = orderId;
+    const displayId = (order.orderData && order.orderData.orderCode) ? order.orderData.orderCode : ('#' + orderId.substring(0, 8));
+    document.getElementById('track-order-id').textContent = displayId;
+    document.getElementById('track-order-id-info').textContent = displayId;
     document.getElementById('track-order-date').textContent = order.date;
     document.getElementById('track-status-badge').innerHTML = getStatusBadge(order.status);
     document.getElementById('track-total').textContent = order.total;
+    // Address and phone
+    const od = order.orderData || {};
+    document.getElementById('track-delivery-address').textContent = (od.deliveryAddress && od.deliveryAddress.trim()) ? od.deliveryAddress : 'N/A';
+    document.getElementById('track-phone').textContent = (od.phone && od.phone.trim()) ? od.phone : 'N/A';
     
-    // Set estimated time based on status
-    let estimatedTime = '30 minutes';
-    if (order.status === 'processing') {
-        estimatedTime = '20 minutes';
-    } else if (order.status === 'completed') {
-        estimatedTime = 'Delivered';
-    }
-    document.getElementById('track-estimated-time').textContent = estimatedTime;
     document.getElementById('track-placed-time').textContent = order.date;
     
     // Parse and display items
@@ -319,15 +554,24 @@ function trackOrder(orderId) {
 }
 
 // Refresh tracking
-function refreshTracking() {
-    loadCustomerOrders();
-    trackOrder(currentTrackingOrderId);
+async function refreshTracking() {
+    await loadCustomerOrders();
+    await trackOrder(currentTrackingOrderId);
 }
 
 // Logout
 function logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        window.location.href = 'login.html';
-    }
+    Swal.fire({
+        icon: 'question',
+        title: 'Logout?',
+        text: 'Are you sure you want to logout?',
+        showCancelButton: true,
+        confirmButtonText: 'Logout',
+    }).then(res => {
+        if (res.isConfirmed) {
+            try { localStorage.removeItem('authToken'); localStorage.removeItem('authUserRole'); } catch (_) {}
+            window.location.href = '../login.html';
+        }
+    });
 }
 
