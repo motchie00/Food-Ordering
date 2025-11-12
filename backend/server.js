@@ -1,14 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const mongoose = require('mongoose');
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const { store, createId, findUserByUsername } = require('./storage/localStore');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -44,19 +45,46 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// Connect to MongoDB (optional for development without DB)
-const MONGODB_URI = process.env.MONGODB_URI;
+// Initialize fixed admin account
+const initializeAdmin = async () => {
+  try {
+    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'password';
+    
+    // Check if admin already exists
+    const existingAdmin = findUserByUsername(adminUsername);
+    if (existingAdmin) {
+      console.log('Admin account already exists');
+      return;
+    }
 
-if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI)
-    .then(() => {
-      console.log('Connected to MongoDB');
-    })
-    .catch((error) => {
-      console.error('MongoDB connection error:', error);
-      console.log('Note: Server will continue without database connection');
-    });
-}
+    // Validate password length (minimum 8 characters)
+    if (adminPassword.length < 8) {
+      console.error('Admin password must be at least 8 characters long');
+      return;
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(adminPassword, salt);
+
+    // Create admin user
+    const timestamp = new Date().toISOString();
+    const admin = {
+      _id: createId(),
+      username: adminUsername,
+      password: hashedPassword,
+      role: 'admin',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+
+    store.users.push(admin);
+    console.log(`Fixed admin account created - Username: ${adminUsername}, Password: ${adminPassword}`);
+  } catch (error) {
+    console.error('Error initializing admin account:', error);
+  }
+};
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -64,8 +92,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!', error: err.message });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// Initialize admin and start server
+initializeAdmin().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
 });
 

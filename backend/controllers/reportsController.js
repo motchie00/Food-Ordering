@@ -1,4 +1,4 @@
-const Order = require('../models/Order');
+const { store } = require('../storage/localStore');
 
 const getSalesReport = async (req, res) => {
   try {
@@ -7,11 +7,14 @@ const getSalesReport = async (req, res) => {
     const to = now;
     
     // Get all orders in date range
-    const orders = await Order.find({
-      createdAt: { $gte: from, $lte: to },
-      paymentStatus: { $ne: 'failed' },
-    })
-      .populate('items.menuItem');
+    const orders = store.orders.filter((order) => {
+      const createdAt = new Date(order.createdAt);
+      return (
+        createdAt >= from &&
+        createdAt <= to &&
+        order.paymentStatus !== 'failed'
+      );
+    });
     
     // Calculate totals
     const totals = {
@@ -47,9 +50,17 @@ const getSalesReport = async (req, res) => {
     const itemMap = {};
     orders.forEach(order => {
       order.items.forEach(item => {
-        const name = item.menuItem?.name || 'Unknown Item';
+        const menuItem = item.menuItem
+          ? store.menuItems.find((menu) => menu._id === item.menuItem)
+          : null;
+        const name = menuItem?.name || item.name || 'Unknown Item';
         const qty = item.quantity || 0;
-        const price = item.price || 0;
+        const price =
+          typeof item.price === 'number'
+            ? item.price
+            : menuItem
+            ? menuItem.price
+            : 0;
         
         if (!itemMap[name]) {
           itemMap[name] = { name, quantity: 0, revenue: 0 };

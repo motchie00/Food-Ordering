@@ -86,6 +86,11 @@ async function loadMenuFromAPI() {
                         if (/^https?:\/\//i.test(item.image)) return item.image;
                         return `${window.api.API_BASE_URL}/uploads/${(item.image || '').replace(/^\/+/, '')}`;
                     };
+                    const rawQuantity = item.quantity;
+                    const normalizedQuantity =
+                        typeof rawQuantity === 'number' && Number.isFinite(rawQuantity)
+                            ? Math.max(0, rawQuantity)
+                            : null;
                     return ({
                         id: item._id || item.id,
                         name: item.name,
@@ -94,6 +99,7 @@ async function loadMenuFromAPI() {
                         category: item.category || 'Other',
                         image: resolveImage(),
                         isAvailable: item.isAvailable !== false,
+                        quantity: normalizedQuantity,
                     });
                 });
                 return true;
@@ -115,6 +121,8 @@ function displayMenuItems(items = menuItems) {
         : items.filter(item => item.category === currentCategory);
 
     filteredItems.forEach(item => {
+        const availableQuantity = typeof item.quantity === 'number' ? item.quantity : null;
+        const isOutOfStock = availableQuantity !== null && availableQuantity <= 0;
         const itemCard = document.createElement('div');
         itemCard.className = 'menu-item-card';
         itemCard.innerHTML = `
@@ -123,7 +131,8 @@ function displayMenuItems(items = menuItems) {
                 <h5>${item.name}</h5>
                 <p>${item.description}</p>
                 <div class="price">₱${item.price.toFixed(2)}</div>
-                <button class="btn btn-custom btn-sm w-100" onclick="openAddToCartModal('${item.id}')">
+                ${availableQuantity !== null ? `<div class="text-muted small mb-2">Available: ${availableQuantity}</div>` : ''}
+                <button class="btn btn-custom btn-sm w-100" onclick="openAddToCartModal('${item.id}')" ${isOutOfStock ? 'disabled' : ''}>
                     <i class="bi bi-cart-plus me-2"></i>Add to Cart
                 </button>
             </div>
@@ -185,12 +194,37 @@ function addToCart(itemId, quantity = 1) {
     if (!item) return;
     const existingItem = cart.find(c => String(c.id) === String(itemId));
 
-    const qty = Math.max(1, parseInt(quantity, 10) || 1);
+    const qtyRequested = Math.max(1, parseInt(quantity, 10) || 1);
+    const availableQuantity = typeof item.quantity === 'number' ? item.quantity : null;
+    const alreadyInCart = existingItem ? existingItem.quantity : 0;
 
-    if (existingItem) {
-        existingItem.quantity += qty;
+    if (availableQuantity !== null) {
+        const remaining = availableQuantity - alreadyInCart;
+        if (remaining <= 0) {
+            Swal.fire({ icon: 'info', title: 'Out of stock', text: `${item.name} is no longer available.` });
+            return;
+        }
+        if (qtyRequested > remaining) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Limited stock',
+                text: `Only ${remaining} ${item.name} left. Added the maximum available.`,
+            });
+        }
+        const qtyToAdd = Math.min(qtyRequested, remaining);
+        if (qtyToAdd <= 0) return;
+
+        if (existingItem) {
+            existingItem.quantity += qtyToAdd;
+        } else {
+            cart.push({ ...item, quantity: qtyToAdd });
+        }
     } else {
-        cart.push({ ...item, quantity: qty });
+        if (existingItem) {
+            existingItem.quantity += qtyRequested;
+        } else {
+            cart.push({ ...item, quantity: qtyRequested });
+        }
     }
 
     updateCartCount();
@@ -200,6 +234,16 @@ function openAddToCartModal(itemId) {
     addToCartContext.itemId = itemId;
     const item = menuItems.find(i => String(i.id) === String(itemId));
     if (!item) return;
+    const availableQuantity = typeof item.quantity === 'number' ? item.quantity : null;
+    const existingItem = cart.find(c => String(c.id) === String(itemId));
+    const alreadyInCart = existingItem ? existingItem.quantity : 0;
+    const remaining = availableQuantity !== null ? Math.max(0, availableQuantity - alreadyInCart) : null;
+
+    if (remaining !== null && remaining <= 0) {
+        Swal.fire({ icon: 'info', title: 'Out of stock', text: `${item.name} is no longer available.` });
+        return;
+    }
+
     document.getElementById('add-cart-name').textContent = item.name;
     document.getElementById('add-cart-desc').textContent = item.description || '';
     document.getElementById('add-cart-price').textContent = `₱${item.price.toFixed(2)}`;
@@ -208,6 +252,12 @@ function openAddToCartModal(itemId) {
     img.onerror = function(){ this.src = '../assets/Logo.png'; };
     const qtyInput = document.getElementById('add-cart-qty');
     qtyInput.value = 1;
+    qtyInput.setAttribute('min', '1');
+    if (remaining !== null) {
+        qtyInput.setAttribute('max', String(remaining));
+    } else {
+        qtyInput.removeAttribute('max');
+    }
     const modal = new bootstrap.Modal(document.getElementById('addToCartModal'));
     modal.show();
 }
@@ -215,12 +265,27 @@ function openAddToCartModal(itemId) {
 function changeAddQty(delta) {
     const qtyInput = document.getElementById('add-cart-qty');
     const current = parseInt(qtyInput.value, 10) || 1;
-    qtyInput.value = Math.max(1, current + delta);
+    let next = Math.max(1, current + delta);
+    const maxAttr = qtyInput.getAttribute('max');
+    if (maxAttr) {
+        const max = parseInt(maxAttr, 10);
+        if (Number.isFinite(max)) {
+            next = Math.min(next, max);
+        }
+    }
+    qtyInput.value = next;
 }
 
 function confirmAddToCart() {
     const qtyInput = document.getElementById('add-cart-qty');
-    const qty = parseInt(qtyInput.value, 10) || 1;
+    let qty = parseInt(qtyInput.value, 10) || 1;
+    const maxAttr = qtyInput.getAttribute('max');
+    if (maxAttr) {
+        const max = parseInt(maxAttr, 10);
+        if (Number.isFinite(max)) {
+            qty = Math.min(qty, max);
+        }
+    }
     addToCart(addToCartContext.itemId, qty);
     const modalEl = document.getElementById('addToCartModal');
     const modal = bootstrap.Modal.getInstance(modalEl);
@@ -291,11 +356,19 @@ function updateCart() {
 // Update quantity
 function updateQuantity(itemId, change) {
     const item = cart.find(c => String(c.id) === String(itemId));
-    if (item) {
-        item.quantity = Math.max(1, item.quantity + change);
-        updateCart();
-        updateCartCount();
+    if (!item) return;
+    const menuItem = menuItems.find(m => String(m.id) === String(itemId));
+    const availableQuantity = menuItem && typeof menuItem.quantity === 'number' ? menuItem.quantity : null;
+    let nextQuantity = Math.max(1, item.quantity + change);
+    if (availableQuantity !== null) {
+        nextQuantity = Math.min(nextQuantity, availableQuantity);
+        if (nextQuantity === item.quantity && change > 0) {
+            Swal.fire({ icon: 'info', title: 'Limit reached', text: `Only ${availableQuantity} ${menuItem.name} available.` });
+        }
     }
+    item.quantity = nextQuantity;
+    updateCart();
+    updateCartCount();
 }
 
 // Remove from cart
@@ -388,6 +461,9 @@ async function confirmOrder() {
     
     cart = [];
     updateCart();
+    updateCartCount();
+    await loadMenuFromAPI();
+    displayMenuItems();
     updateCartCount();
     await loadCustomerOrders();
 }
