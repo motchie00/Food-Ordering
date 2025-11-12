@@ -1,9 +1,8 @@
-const mongoose = require('mongoose');
-const MenuItem = require('../models/MenuItem');
+const { store, createId, updateById, removeById } = require('../storage/localStore');
 
 const listMenu = async (req, res) => {
   try {
-    const items = await MenuItem.find({ isAvailable: true });
+    const items = store.menuItems.filter((item) => item.isAvailable !== false);
     res.json({ items, count: items.length });
   } catch (error) {
     console.error('List menu error:', error);
@@ -13,7 +12,7 @@ const listMenu = async (req, res) => {
 
 const getMenuItem = async (req, res) => {
   try {
-    const item = await MenuItem.findById(req.params.id);
+    const item = store.menuItems.find((menu) => menu._id === req.params.id);
     if (!item) return res.status(404).json({ message: 'Menu item not found' });
     res.json({ item });
   } catch (error) {
@@ -24,25 +23,35 @@ const getMenuItem = async (req, res) => {
 
 const createMenuItem = async (req, res) => {
   try {
-    const { name, description, price, category, image, isAvailable, restaurant } = req.body || {};
+    const { name, description, price, category, image, isAvailable, restaurant, quantity } = req.body || {};
     if (!name || typeof price !== 'number') {
       return res.status(400).json({ message: 'name and numeric price are required' });
     }
     
-    // Use default restaurant ID if not provided (for single restaurant setup)
-    const restaurantId = restaurant || new mongoose.Types.ObjectId();
-    
-    const menuItem = new MenuItem({
-      restaurant: restaurantId,
+    const quantityValue =
+      typeof quantity === 'number'
+        ? quantity
+        : Number.isFinite(Number(quantity))
+        ? Number(quantity)
+        : 0;
+    const normalizedQuantity = quantityValue >= 0 ? quantityValue : 0;
+
+    const timestamp = new Date().toISOString();
+    const menuItem = {
+      _id: createId(),
+      restaurant: restaurant || 'default-restaurant',
       name,
       description: description || '',
       price,
       category: (category || '').trim(),
       image: image || 'https://via.placeholder.com/200',
       isAvailable: typeof isAvailable === 'boolean' ? isAvailable : true,
-    });
+      quantity: normalizedQuantity,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
     
-    await menuItem.save();
+    store.menuItems.push(menuItem);
     res.status(201).json({ message: 'Menu item created', item: menuItem });
   } catch (error) {
     console.error('Create menu item error:', error);
@@ -52,15 +61,25 @@ const createMenuItem = async (req, res) => {
 
 const updateMenuItem = async (req, res) => {
   try {
-    const { category, ...updateData } = req.body;
+    const { category, quantity, ...rest } = req.body || {};
+    const updateData = { ...rest };
     if (category) updateData.category = String(category).trim();
+    if (quantity !== undefined) {
+      const quantityValue =
+        typeof quantity === 'number'
+          ? quantity
+          : Number.isFinite(Number(quantity))
+          ? Number(quantity)
+          : 0;
+      updateData.quantity = quantityValue >= 0 ? quantityValue : 0;
+    }
     
-    const item = await MenuItem.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-    
+    const item = updateById('menuItems', req.params.id, (current) => ({
+      ...current,
+      ...updateData,
+      updatedAt: new Date().toISOString(),
+    }));
+
     if (!item) return res.status(404).json({ message: 'Menu item not found' });
     res.json({ message: 'Menu item updated', item });
   } catch (error) {
@@ -71,7 +90,7 @@ const updateMenuItem = async (req, res) => {
 
 const deleteMenuItem = async (req, res) => {
   try {
-    const item = await MenuItem.findByIdAndDelete(req.params.id);
+    const item = removeById('menuItems', req.params.id);
     if (!item) return res.status(404).json({ message: 'Menu item not found' });
     res.json({ message: 'Menu item deleted', item });
   } catch (error) {
@@ -82,10 +101,10 @@ const deleteMenuItem = async (req, res) => {
 
 const getMenuByRestaurant = async (req, res) => {
   try {
-    const items = await MenuItem.find({ 
-      restaurant: req.params.restaurantId,
-      isAvailable: true 
-    });
+    const items = store.menuItems.filter(
+      (item) =>
+        item.restaurant === req.params.restaurantId && item.isAvailable !== false
+    );
     res.json({ items, count: items.length, restaurantId: req.params.restaurantId });
   } catch (error) {
     console.error('Get menu by restaurant error:', error);

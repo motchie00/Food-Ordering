@@ -7,9 +7,18 @@ const {
   getProfile,
   getAllUsers,
   deleteUser,
+  createStaffAccount,
+  createCustomerAccount,
+  getCustomers,
+  getCustomer,
+  updateCustomer,
 } = require('../controllers/authController');
 
 router.post('/register', register);
+
+// Admin-managed account creation
+router.post('/staff', auth, isAdmin, createStaffAccount);
+router.post('/customers', auth, isAdmin, createCustomerAccount);
 
 // @route   POST /api/auth/login
 // @desc    Login user
@@ -33,10 +42,16 @@ router.get('/profile', auth, getProfile);
 // @access  Private (Admin)
 router.get('/users', auth, isAdmin, getAllUsers);
 
+// Customer management
+router.get('/customers', auth, isAdmin, getCustomers);
+router.get('/customers/:id', auth, isAdmin, getCustomer);
+router.put('/customers/:id', auth, isAdmin, updateCustomer);
+
 // @route   DELETE /api/auth/users/:id
 // @desc    Delete a user (Admin only). Admin accounts cannot be deleted
 // @access  Private (Admin)
 router.delete('/users/:id', auth, isAdmin, deleteUser);
+router.delete('/customers/:id', auth, isAdmin, deleteUser);
 
 module.exports = router;
 

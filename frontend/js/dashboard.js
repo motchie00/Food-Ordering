@@ -16,8 +16,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadCategories(),
         loadMenuItems(),
         loadUsers(),
+        loadCustomers(),
     ]);
     setupFormHandlers();
+    
+    // Customer search functionality
+    const customerSearch = document.getElementById('customerSearch');
+    if (customerSearch) {
+        customerSearch.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            filterCustomers(searchTerm);
+        });
+    }
 });
 
 // Load menu items from API
@@ -44,7 +54,7 @@ function displayMenuItems(items = menuItems) {
     tbody.innerHTML = '';
     
     if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No menu items found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No menu items found</td></tr>';
         return;
     }
     
@@ -66,14 +76,18 @@ function displayMenuItems(items = menuItems) {
         const imgSrc = resolveImage();
         const row = document.createElement('tr');
         const category = categoryMap[item.category] || item.category;
+        const rawQuantity = item.quantity ?? 0;
+        const parsedQuantity = Number(rawQuantity);
+        const quantity = Number.isFinite(parsedQuantity) && parsedQuantity >= 0 ? parsedQuantity : 0;
         row.innerHTML = `
             <td><img src="${imgSrc}" alt="${item.name}" onerror="this.src='../assets/Logo.png'" style="border-radius: 5px; width: 50px; height: 50px; object-fit: cover;"></td>
             <td>${item.name}</td>
             <td>${item.description || ''}</td>
             <td>₱${item.price.toFixed(2)}</td>
             <td>${category}</td>
+            <td>${quantity}</td>
             <td>
-                <button class="btn btn-sm btn-custom" onclick="showEditForm('${item._id || item.id}', '${item.name.replace(/'/g, "\\'")}', '${(item.description || '').replace(/'/g, "\\'")}', '${item.price}', '${category}')">Edit</button>
+                <button class="btn btn-sm btn-custom" onclick="showEditForm('${item._id || item.id}', '${item.name.replace(/'/g, "\\'")}', '${(item.description || '').replace(/'/g, "\\'")}', '${item.price}', '${category}', '${quantity}')">Edit</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteMenuItemById('${item._id || item.id}', '${item.name.replace(/'/g, "\\'")}')">Delete</button>
             </td>
         `;
@@ -240,7 +254,10 @@ async function deleteCategoryById(categoryId, name) {
 async function createMenuItem() {
     const name = document.querySelector('#addMenuItem input[type="text"]')?.value.trim();
     const description = document.querySelector('#addMenuItem textarea')?.value.trim();
-    const price = parseFloat(document.querySelector('#addMenuItem input[type="number"]')?.value);
+    const priceInput = document.querySelector('#addMenuItem input[type="number"]');
+    const price = parseFloat(priceInput?.value);
+    const quantityInput = document.getElementById('add-menu-quantity');
+    const quantityValue = quantityInput ? Math.max(0, parseInt(quantityInput.value, 10) || 0) : 0;
     const category = document.querySelector('#addMenuItem select')?.value;
     const imageInput = document.querySelector('#addMenuItem input[type="file"]');
     let image = '';
@@ -274,7 +291,7 @@ async function createMenuItem() {
         // 2) Create menu item
         await window.api.apiRequest('/api/menu', {
             method: 'POST',
-            body: { name, description, price, category, image },
+            body: { name, description, price, category, image, quantity: quantityValue },
             auth: true,
         });
         
@@ -291,13 +308,17 @@ async function createMenuItem() {
 }
 
 // Show edit form
-function showEditForm(itemId, itemName, description, price, category) {
+function showEditForm(itemId, itemName, description, price, category, quantity) {
     currentMenuItemId = itemId;
     
     document.getElementById('edit-menu-name').value = itemName || '';
     document.getElementById('edit-menu-description').value = description || '';
     document.getElementById('edit-menu-price').value = price || '';
     document.getElementById('edit-menu-category').value = category || 'Main Dish';
+    if (document.getElementById('edit-menu-quantity')) {
+        const qty = parseInt(quantity, 10);
+        document.getElementById('edit-menu-quantity').value = Number.isFinite(qty) && qty >= 0 ? qty : 0;
+    }
     
     showContent('editMenuItem');
 }
@@ -313,6 +334,8 @@ async function updateMenuItemFromForm() {
     const description = document.getElementById('edit-menu-description').value.trim();
     const price = parseFloat(document.getElementById('edit-menu-price').value);
     const category = document.getElementById('edit-menu-category').value;
+    const quantityInput = document.getElementById('edit-menu-quantity');
+    const quantityValue = quantityInput ? Math.max(0, parseInt(quantityInput.value, 10) || 0) : undefined;
     
     if (!itemName || !price || isNaN(price)) {
         Swal.fire({ icon: 'info', title: 'Missing fields', text: 'Please fill in name and price' });
@@ -332,6 +355,9 @@ async function updateMenuItemFromForm() {
             // Optional image upload if a new file is selected
             const imageInput = document.getElementById('edit-menu-image');
             let body = { name: itemName, description, price, category };
+            if (quantityValue !== undefined) {
+                body.quantity = quantityValue;
+            }
             if (imageInput && imageInput.files && imageInput.files[0]) {
                 const fd = new FormData();
                 fd.append('image', imageInput.files[0]);
@@ -533,7 +559,11 @@ async function submitAddUser() {
             await Swal.fire({ icon: 'info', title: 'Missing fields', text: 'Provide username and password' });
             return;
         }
-        await window.api.apiRequest('/api/auth/register', {
+        if (password.length < 8) {
+            await Swal.fire({ icon: 'info', title: 'Password too short', text: 'Password must be at least 8 characters long' });
+            return;
+        }
+        await window.api.apiRequest('/api/auth/staff', {
             method: 'POST',
             body: { username, password, role },
             auth: true,
@@ -542,6 +572,8 @@ async function submitAddUser() {
         const modalEl = document.getElementById('addUserModal');
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
+        document.getElementById('addUserUsername').value = '';
+        document.getElementById('addUserPassword').value = '';
         await loadUsers();
         showContent('userManagement');
     } catch (err) {
@@ -569,5 +601,86 @@ async function removeUserPrompt(userId, label) {
     } catch (err) {
         console.error('Remove user failed:', err);
         Swal.fire({ icon: 'error', title: 'Remove failed', text: err.message || 'Unknown error' });
+    }
+}
+
+// =====================
+// Customer Management (Admin only)
+// =====================
+let allCustomers = [];
+
+async function loadCustomers() {
+    try {
+        if (!window.api) return;
+        const res = await window.api.apiRequest('/api/auth/customers', { auth: true });
+        allCustomers = (res && res.customers) ? res.customers : [];
+        renderCustomersTable(allCustomers);
+    } catch (err) {
+        console.error('Failed to load customers:', err);
+        allCustomers = [];
+        renderCustomersTable([]);
+    }
+}
+
+function renderCustomersTable(customers) {
+    const tbody = document.getElementById('customersTable');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!customers.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="4" class="text-center text-muted">No customers found</td>';
+        tbody.appendChild(tr);
+        return;
+    }
+    customers.forEach(c => {
+        const tr = document.createElement('tr');
+        const createdDate = c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'N/A';
+        tr.innerHTML = `
+            <td>${c.name || ''}</td>
+            <td>${c.email || ''}</td>
+            <td>${createdDate}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="removeCustomerPrompt('${c.id || c._id}', '${(c.name || '').replace(/'/g, "\\'")}')">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function filterCustomers(searchTerm) {
+    if (!searchTerm) {
+        renderCustomersTable(allCustomers);
+        return;
+    }
+    const filtered = allCustomers.filter(c => 
+        (c.name && c.name.toLowerCase().includes(searchTerm)) ||
+        (c.email && c.email.toLowerCase().includes(searchTerm))
+    );
+    renderCustomersTable(filtered);
+}
+
+async function removeCustomerPrompt(customerId, label) {
+    try {
+        const res = await Swal.fire({
+            icon: 'warning',
+            title: 'Delete customer?',
+            text: label,
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+        });
+        if (!res.isConfirmed) return;
+        
+        await window.api.apiRequest(`/api/auth/customers/${customerId}`, {
+            method: 'DELETE',
+            auth: true,
+        });
+        
+        await Swal.fire({ icon: 'success', title: 'Customer deleted', timer: 1000, showConfirmButton: false });
+        await loadCustomers();
+    } catch (err) {
+        console.error('Delete customer failed:', err);
+        Swal.fire({ icon: 'error', title: 'Delete failed', text: err.message || 'Unknown error' });
     }
 }

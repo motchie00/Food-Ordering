@@ -40,6 +40,11 @@
                 <span>User Management</span>
             </a>
 
+            <a href="#" class="menu-item" onclick="showContent('customerManagement')">
+                <i class="bi bi-person-circle"></i>
+                <span>Customer Management</span>
+            </a>
+
             <a href="#" class="menu-item" onclick="logout()">
                 <i class="bi bi-box-arrow-right"></i>
                 <span>Logout</span>
@@ -80,6 +85,7 @@
                                     <th>Description</th>
                                     <th>Price</th>
                                     <th>Category</th>
+                                    <th>Quantity</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -129,7 +135,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Quantity Available</label>
-                            <input type="number" class="form-control" placeholder="0">
+                            <input type="number" class="form-control" id="add-menu-quantity" placeholder="0" min="0">
                         </div>
                         <button type="submit" class="btn btn-custom">Add Item</button>
                         <button type="reset" class="btn btn-secondary">Reset</button>
@@ -180,7 +186,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Quantity Available</label>
-                            <input type="number" class="form-control" id="edit-menu-quantity" placeholder="0">
+                            <input type="number" class="form-control" id="edit-menu-quantity" placeholder="0" min="0">
                         </div>
                         <button type="button" class="btn btn-custom" onclick="updateMenuItemFromForm()">Update Item</button>
                         <button type="button" class="btn btn-danger" onclick="deleteMenuItemFromEdit()">
@@ -266,8 +272,40 @@
                 </div>
             </div>
         </div>
-    </div>
 
+        <!-- Customer Management Content -->
+        <div class="content-section" id="customerManagement">
+            <div class="page-header">
+                <h2><i class="bi bi-person-circle me-2"></i>Customer Management</h2>
+            </div>
+
+            <div class="card card-custom">
+                <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>All Customers</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="customerSearch" placeholder="Search customers by name or email..." style="max-width: 400px;">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customersTable">
+                                <!-- Customers will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Bootstrap JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- SweetAlert2 -->
