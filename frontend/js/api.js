@@ -1,5 +1,5 @@
 // Simple API helper for frontend-backend communication (fixed to backend port)
-const API_BASE_URL = 'https://food-ordering-fjtv-git-main-motchie00s-projects.vercel.app';
+const API_BASE_URL = 'https://food-ordering-fjtv.vercel.app';
 
 function getAuthToken() {
   try {
