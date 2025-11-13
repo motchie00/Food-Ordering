@@ -10,6 +10,37 @@ let currentPage = 1;
 let pageSize = 10;
 let totalOrdersCount = 0;
 
+function setupSidebarToggle() {
+    const body = document.body;
+    const overlay = document.querySelector('.sidebar-overlay');
+    const toggles = document.querySelectorAll('.sidebar-toggle');
+    const closeSidebar = () => body.classList.remove('sidebar-open');
+
+    toggles.forEach(btn => {
+        btn.addEventListener('click', () => {
+            body.classList.toggle('sidebar-open');
+        });
+    });
+
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
+    }
+
+    document.querySelectorAll('.sidebar .menu-item').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992) {
+                closeSidebar();
+            }
+        });
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 992) {
+            closeSidebar();
+        }
+    });
+}
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', async function() {
     // Auth guard
@@ -20,6 +51,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     } catch (_) {}
     
+    setupSidebarToggle();
     await loadOrderManagement();
     
     // Search functionality

@@ -2,6 +2,38 @@ let currentMenuItemId = null;
 let menuItems = [];
 let categories = [];
 
+function setupSidebarToggle() {
+    const body = document.body;
+    const overlay = document.querySelector('.sidebar-overlay');
+    const toggles = document.querySelectorAll('.sidebar-toggle');
+
+    const closeSidebar = () => body.classList.remove('sidebar-open');
+
+    toggles.forEach(btn => {
+        btn.addEventListener('click', () => {
+            body.classList.toggle('sidebar-open');
+        });
+    });
+
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
+    }
+
+    document.querySelectorAll('.sidebar .menu-item').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992) {
+                closeSidebar();
+            }
+        });
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 992) {
+            closeSidebar();
+        }
+    });
+}
+
 function readFileAsDataURL(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -21,6 +53,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     } catch (_) {}
     
+    setupSidebarToggle();
+
     await Promise.all([
         loadCategories(),
         loadMenuItems(),
@@ -431,7 +465,7 @@ function deleteMenuItemFromEdit() {
     }
 }
 
-function showContent(contentId) {
+function showContent(contentId, evt) {
     // Hide all content sections
     document.querySelectorAll('.content-section').forEach(section => {
         section.classList.remove('active');
@@ -444,11 +478,12 @@ function showContent(contentId) {
     }
 
     // Update active menu item
-    if (event && event.target) {
+    const triggerEvent = evt || window.event;
+    if (triggerEvent && triggerEvent.target) {
         document.querySelectorAll('.menu-item, .submenu-item').forEach(item => {
             item.classList.remove('active');
         });
-        event.target.classList.add('active');
+        triggerEvent.target.classList.add('active');
     }
 }
 
@@ -457,8 +492,9 @@ function toggleSubmenu(submenuId) {
     submenu.classList.toggle('show');
 
     // Update menu item state
-    if (event && event.target) {
-    event.target.classList.toggle('active');
+    const triggerEvent = window.event;
+    if (triggerEvent && triggerEvent.target) {
+        triggerEvent.target.classList.toggle('active');
     }
 }
 

@@ -14,19 +14,29 @@
            background-size: cover;         /* Make image fill the whole page */
            background-position: center;    /* Keep image centered */
            background-repeat: no-repeat;   /* Prevent tiling */
-           height: 100vh;                  /* Full viewport height */
+           min-height: 100vh;              /* Full viewport height */
            display: flex;                  /* Enable flexbox for centering */
-           justify-content: center;        /* Center horizontally */
-           align-items: center;            /* Center vertically */
+           flex-direction: column;
+           justify-content: center;        /* Center vertically */
+           align-items: center;            /* Center horizontally */
            font-family: 'Arial', sans-serif;
            margin: 0;
+           padding: 2rem 1.5rem;
+           position: relative;
+           gap: 2rem;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
         }
 
         .login-container {
             background-image: url('assets/Container bg.jpg');
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            padding: 2rem;
+            padding: 2.25rem 2rem;
             max-width: 400px;
             width: 100%;
         }
@@ -42,6 +52,7 @@
         .role-buttons {
             display: flex;
             justify-content: space-around;
+            gap: 0.5rem;
             margin-bottom: 1.5rem;
         }
         .role-buttons .btn {
@@ -92,10 +103,123 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
+
+        .login-footer {
+            width: min(100%, 920px);
+            background: url('assets/Container bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 14px;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+            padding: 1.75rem 2rem;
+            display: flex;
+            gap: 2rem;
+            color: #f8f9fa;
+        }
+
+        .login-footer .footer-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .login-footer .footer-column h5 {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #ffffff;
+        }
+
+        .login-footer .footer-column h5::after {
+            content: '';
+            display: block;
+            width: 48px;
+            height: 3px;
+            background: linear-gradient(90deg, #ffffff 0%, rgba(255, 255, 255, 0.45) 100%);
+            margin-top: 0.4rem;
+        }
+
+        .login-footer .footer-column p {
+            margin: 0;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.92);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1.75rem 1.25rem;
+                background-attachment: fixed;
+            }
+
+            .login-container {
+                padding: 1.75rem 1.5rem;
+                max-width: 100%;
+            }
+
+            .logo img {
+                max-width: 160px;
+            }
+
+            .role-buttons .btn {
+                font-size: 14px;
+            }
+
+            .login-footer {
+                padding: 1.5rem 1.25rem;
+                gap: 1.25rem;
+                box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+            }
+        }
+        @media (max-width: 576px) {
+            body {
+                padding: 1.5rem 1rem;
+            }
+
+            .login-container {
+                padding: 1.5rem 1.25rem;
+                border-radius: 12px;
+            }
+
+            .role-buttons {
+                flex-direction: column;
+            }
+
+            .role-buttons .btn {
+                margin: 0.25rem 0;
+                width: 100%;
+            }
+
+            .login-footer {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .login-footer .footer-column {
+                gap: 0.5rem;
+            }
+        }
+        @media (max-width: 400px) {
+            body {
+                padding: 1.25rem 0.75rem;
+            }
+
+            .login-container {
+                padding: 1.25rem 1rem;
+            }
+
+            .logo img {
+                max-width: 130px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div> <!-- Removed Bootstrap .container class for perfect centering -->
+    <div class="login-wrapper"> <!-- Removed Bootstrap .container class for perfect centering -->
         <div class="login-container">
             <!-- Logo Section (Replaces "LOGIN PORTAL" text with logo image) -->
             <div class="logo">
@@ -187,6 +311,17 @@
             </div>
         </div>
     </div>
+
+    <footer class="login-footer">
+        <div class="footer-column">
+            <h5>Mission</h5>
+            <p>RamenX aims to make it easy for Filipinos to enjoy real, delicious ramen. We make it easy for ramen lovers with trusted local shops through a simple online platform. Every bowl we serve supports local chefs and helps grow the ramen community here in the Philippines.</p>
+        </div>
+        <div class="footer-column">
+            <h5>Vision</h5>
+            <p>We want great ramen to be part of every Filipino’s life. RamenX hopes to be the country’s leading ramen delivery platform, helping more people discover and enjoy authentic ramen from all over the Philippines.</p>
+        </div>
+    </footer>
 
     <!-- Bootstrap JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

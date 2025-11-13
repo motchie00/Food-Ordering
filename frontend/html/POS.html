@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ramen X - POS</title>
+    <title>RamenX - POS</title>
     <!-- Bootstrap CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons CDN -->
@@ -40,13 +40,13 @@
         .btn-secondary:hover { background-color: #5c636a; }
     </style>
 </head>
-<body>
+<body class="layout-with-sidebar">
     <div class="pos-container">
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-logo">
                 <img src="../assets/Logo.png" alt="Logo">
-                <h4>Ramen X POS</h4>
+                <h4>RamenX POS</h4>
             </div>
 
             <div class="sidebar-menu">
@@ -63,6 +63,13 @@
 
         <!-- Main Content -->
         <div class="main-content">
+            <div class="layout-header d-lg-none">
+                <button class="sidebar-toggle" type="button" aria-label="Toggle navigation">
+                    <i class="bi bi-list"></i>
+                </button>
+                <h1 class="mb-0 fs-4">POS</h1>
+                <span class="text-white-50 small">Orders</span>
+            </div>
             <!-- Header -->
             <div class="pos-header py-2">
                 <div>
@@ -111,6 +118,7 @@
             </div>
         </div>
     </div>
+    <div class="sidebar-overlay d-lg-none"></div>
 
     <!-- Bootstrap JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
