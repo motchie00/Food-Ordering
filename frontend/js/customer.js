@@ -456,9 +456,16 @@ function openOrderSummaryModal() {
     });
     document.getElementById('summaryTotal').textContent = `₱${total.toFixed(2)}`;
     // Reset form
-    document.getElementById('summaryAddress').value = '';
+    const addressEl = document.getElementById('summaryAddress');
+    if (addressEl) {
+        addressEl.value = '';
+        addressEl.classList.remove('is-invalid');
+    }
     const phoneEl = document.getElementById('summaryPhone');
-    if (phoneEl) phoneEl.value = '';
+    if (phoneEl) {
+        phoneEl.value = '';
+        phoneEl.classList.remove('is-invalid');
+    }
     document.getElementById('summary-cod').checked = true;
     const modal = new bootstrap.Modal(document.getElementById('orderSummaryModal'));
     modal.show();
@@ -466,8 +473,24 @@ function openOrderSummaryModal() {
 
 async function confirmOrder() {
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const address = (document.getElementById('summaryAddress').value || '').trim();
-    const phone = (document.getElementById('summaryPhone').value || '').trim();
+    const addressEl = document.getElementById('summaryAddress');
+    const phoneEl = document.getElementById('summaryPhone');
+    const address = (addressEl?.value || '').trim();
+    const phone = (phoneEl?.value || '').trim();
+
+    if (!address || !phone) {
+        if (addressEl) addressEl.classList.toggle('is-invalid', !address);
+        if (phoneEl) phoneEl.classList.toggle('is-invalid', !phone);
+        await Swal.fire({
+            icon: 'info',
+            title: 'Missing details',
+            text: 'Please provide both delivery address and phone number.',
+        });
+        return;
+    }
+    if (phoneEl) phoneEl.classList.remove('is-invalid');
+    if (addressEl) addressEl.classList.remove('is-invalid');
+
     const methodEl = document.querySelector('input[name="summaryPayment"]:checked');
     const selected = methodEl ? methodEl.value : 'cod';
     const paymentMethod = selected === 'cod' ? 'cash' : 'gcash';
@@ -524,9 +547,9 @@ async function loadCustomerOrders() {
                         'pending': 'pending',
                         'confirmed': 'pending',
                         'preparing': 'preparing',
-                        'ready': 'preparing',
-                        'out-for-delivery': 'preparing',
-                        'delivered': 'completed',
+                        'ready': 'ready',
+                        'out-for-delivery': 'out-for-delivery',
+                        'delivered': 'delivered',
                         'cancelled': 'cancelled',
                     };
                     
@@ -580,10 +603,14 @@ function getStatusBadge(status) {
     const badges = {
         'pending': '<span class="badge badge-pending">Pending</span>',
         'preparing': '<span class="badge badge-processing">Preparing</span>',
-        'completed': '<span class="badge badge-completed">Completed</span>'
+        'ready': '<span class="badge badge-processing">Ready</span>',
+        'out-for-delivery': '<span class="badge badge-processing">Out for Delivery</span>',
+        'delivered': '<span class="badge badge-completed">Delivered</span>',
+        'cancelled': '<span class="badge badge-cancelled">Cancelled</span>'
     };
     // Backward compatibility: show Preparing for legacy 'processing'
     if (status === 'processing') return '<span class="badge badge-processing">Preparing</span>';
+    if (status === 'completed') return '<span class="badge badge-completed">Delivered</span>';
     return badges[status] || '';
 }
 
@@ -610,10 +637,10 @@ async function trackOrder(orderId) {
                 const statusMap = {
                     'pending': 'pending',
                     'confirmed': 'pending',
-                    'preparing': 'processing',
-                    'ready': 'processing',
-                    'out-for-delivery': 'processing',
-                    'delivered': 'completed',
+                    'preparing': 'preparing',
+                    'ready': 'ready',
+                    'out-for-delivery': 'out-for-delivery',
+                    'delivered': 'delivered',
                     'cancelled': 'cancelled',
                 };
                 

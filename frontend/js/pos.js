@@ -94,13 +94,12 @@ async function loadOrderManagement(filter = 'all', page = currentPage) {
                     const statusMap = {
                         'pending': 'pending',
                         'confirmed': 'pending',
-                        'preparing': 'processing',
-                        'ready': 'processing',
-                        'out-for-delivery': 'processing',
-                        'delivered': 'completed',
+                        'preparing': 'preparing',
+                        'ready': 'ready',
+                        'out-for-delivery': 'out-for-delivery',
+                        'delivered': 'delivered',
                         'cancelled': 'cancelled',
                     };
-                    
                     return {
                         id: order._id || order.id,
                         displayId: order.orderCode || (order._id || order.id),
@@ -217,7 +216,9 @@ function getStatusBadge(status) {
     const badges = {
         'pending': '<span class="badge badge-pending">Pending</span>',
         'preparing': '<span class="badge badge-processing">Preparing</span>',
-        'completed': '<span class="badge badge-completed">Completed</span>',
+        'ready': '<span class="badge badge-processing">Ready</span>',
+        'out-for-delivery': '<span class="badge badge-processing">Out for Delivery</span>',
+        'delivered': '<span class="badge badge-completed">Delivered</span>',
         'cancelled': '<span class="badge badge-cancelled">Cancelled</span>'
     };
     if (status === 'processing') return '<span class="badge badge-processing">Preparing</span>';
@@ -248,10 +249,10 @@ async function viewOrderDetails(orderId) {
                 const statusMap = {
                     'pending': 'pending',
                     'confirmed': 'pending',
-                    'preparing': 'processing',
-                    'ready': 'processing',
-                    'out-for-delivery': 'processing',
-                    'delivered': 'completed',
+                    'preparing': 'preparing',
+                    'ready': 'ready',
+                    'out-for-delivery': 'out-for-delivery',
+                    'delivered': 'delivered',
                     'cancelled': 'cancelled',
                 };
                 
@@ -289,13 +290,7 @@ async function viewOrderDetails(orderId) {
     document.getElementById('modal-customer-email').textContent = user.email || 'N/A';
     document.getElementById('modal-customer-address').textContent = (order.orderData && order.orderData.deliveryAddress) ? order.orderData.deliveryAddress : 'N/A';
     document.getElementById('modal-status-badge').innerHTML = getStatusBadge(order.status);
-    // Prefer backend status if available, else map from displayed status
-    let currentBackendStatus = (order.orderData && order.orderData.status) ? order.orderData.status : undefined;
-    if (!currentBackendStatus) {
-        if (order.status === 'processing') currentBackendStatus = 'preparing';
-        else if (order.status === 'completed') currentBackendStatus = 'delivered';
-        else currentBackendStatus = order.status;
-    }
+    const currentBackendStatus = (order.orderData && order.orderData.status) ? order.orderData.status : order.status;
     document.getElementById('modal-status-badge').setAttribute('data-current-status', currentBackendStatus);
 
     // Configure single advance button label based on current status
@@ -305,7 +300,8 @@ async function viewOrderDetails(orderId) {
         let label = 'Next';
         let variantClass = 'btn-primary';
         if (s === 'pending') { label = 'Prepare Order'; variantClass = 'btn-warning'; }
-        else if (s === 'preparing') { label = 'Deliver Order'; variantClass = 'btn-primary'; }
+        else if (s === 'preparing') { label = 'Mark Ready'; variantClass = 'btn-primary'; }
+        else if (s === 'ready') { label = 'Send Out for Delivery'; variantClass = 'btn-primary'; }
         else if (s === 'out-for-delivery') { label = 'Complete'; variantClass = 'btn-success'; }
         else if (s === 'delivered' || s === 'cancelled') { label = 'No further action'; variantClass = 'btn-secondary'; }
         advanceBtn.textContent = label;
@@ -343,7 +339,7 @@ async function viewOrderDetails(orderId) {
 // Change order status
 async function changeOrderStatus() {
     const currentStatus = document.getElementById('modal-status-badge').getAttribute('data-current-status');
-    const newStatus = prompt(`Current status: ${currentStatus}\n\nEnter new status:\n- pending\n- preparing\n- out-for-delivery\n- completed\n- failed/cancelled`);
+    const newStatus = prompt(`Current status: ${currentStatus}\n\nEnter new status:\n- pending\n- preparing\n- ready\n- out-for-delivery\n- delivered\n- cancelled`);
     
     if (!newStatus) return;
     
@@ -351,7 +347,9 @@ async function changeOrderStatus() {
     const statusMap = {
         'pending': 'pending',
         'preparing': 'preparing',
+        'ready': 'ready',
         'out-for-delivery': 'out-for-delivery',
+        'delivered': 'delivered',
         'completed': 'delivered',
         'failed': 'cancelled',
         'failed/cancelled': 'cancelled',
@@ -399,8 +397,9 @@ async function setOrderStatus(targetStatus) {
         const labels = {
             'pending': 'Pending',
             'preparing': 'Preparing',
+            'ready': 'Ready',
             'out-for-delivery': 'Out for Delivery',
-            'delivered': 'Completed',
+            'delivered': 'Delivered',
             'cancelled': 'Cancelled',
         };
         const display = labels[targetStatus] || targetStatus;
@@ -436,8 +435,9 @@ async function advanceOrderStatus() {
         let next;
         let display;
         if (s === 'pending') { next = 'preparing'; display = 'Prepare Order'; }
-        else if (s === 'preparing') { next = 'out-for-delivery'; display = 'Deliver Order'; }
-        else if (s === 'out-for-delivery') { next = 'delivered'; display = 'Complete'; }
+        else if (s === 'preparing') { next = 'ready'; display = 'Mark Ready'; }
+        else if (s === 'ready') { next = 'out-for-delivery'; display = 'Send Out for Delivery'; }
+        else if (s === 'out-for-delivery') { next = 'delivered'; display = 'Mark Delivered'; }
         else return; // delivered or cancelled - no further action
 
         // confirm with SweetAlert
@@ -457,6 +457,8 @@ async function advanceOrderStatus() {
             body: { status: next },
             auth: true,
         });
+        document.getElementById('modal-status-badge').innerHTML = getStatusBadge(next);
+        document.getElementById('modal-status-badge').setAttribute('data-current-status', next);
         await loadOrderManagement(currentOrderFilter);
         const myModal = bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'));
         if (myModal) myModal.hide();
@@ -472,13 +474,15 @@ async function openStatusPicker() {
         const labels = {
             'pending': 'Pending',
             'preparing': 'Preparing',
+            'ready': 'Ready',
             'out-for-delivery': 'Out for Delivery',
-            'delivered': 'Completed',
+            'delivered': 'Delivered',
             'cancelled': 'Cancelled',
         };
         const inputOptions = {
             'pending': labels['pending'],
             'preparing': labels['preparing'],
+            'ready': labels['ready'],
             'out-for-delivery': labels['out-for-delivery'],
             'delivered': labels['delivered'],
             'cancelled': labels['cancelled'],
