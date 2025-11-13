@@ -119,6 +119,7 @@ async function loadMenuFromAPI() {
                     const resolveImage = () => {
                         if (!item.image) return '../assets/Logo.png';
                         if (/^https?:\/\//i.test(item.image)) return item.image;
+                        if (/^data:image\//i.test(item.image)) return item.image;
                         return `${window.api.API_BASE_URL}/uploads/${(item.image || '').replace(/^\/+/, '')}`;
                     };
                     const rawQuantity = item.quantity;
