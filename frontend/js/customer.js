@@ -494,9 +494,14 @@ async function confirmOrder() {
     const methodEl = document.querySelector('input[name="summaryPayment"]:checked');
     const selected = methodEl ? methodEl.value : 'cod';
     const paymentMethod = selected === 'cod' ? 'cash' : 'gcash';
-    
-    const normalizedPhone = phone.startsWith('+63') ? phone : phone.startsWith('09') ? '+63' + phone.slice(1) : phone;
-    const phonePattern = /^\+63\d{10}$/;
+
+    let normalizedPhone = phone.replace(/\s+/g, '');
+    if (normalizedPhone.startsWith('+63')) {
+        normalizedPhone = '0' + normalizedPhone.slice(3);
+    } else if (normalizedPhone.startsWith('63') && normalizedPhone.length === 12) {
+        normalizedPhone = '0' + normalizedPhone.slice(2);
+    }
+    const phonePattern = /^09\d{9}$/;
     if (!phonePattern.test(normalizedPhone)) {
         if (phoneEl) phoneEl.classList.add('is-invalid');
         await Swal.fire({
@@ -508,28 +513,16 @@ async function confirmOrder() {
     }
     if (phoneEl) phoneEl.classList.remove('is-invalid');
 
-    const phonePattern = /^(09\d{9}|\+?63\d{10})$/;
-    if (!phonePattern.test(phone)) {
-        if (phoneEl) phoneEl.classList.add('is-invalid');
-        await Swal.fire({
-            icon: 'info',
-            title: 'Invalid phone number',
-            text: 'Please enter an 11-digit Philippine mobile number (e.g., 09XXXXXXXXX).',
-        });
-        return;
-    }
-    if (phoneEl) phoneEl.classList.remove('is-invalid');
-
     try {
         if (window.api) {
             const orderPayload = {
                 items: cart,
                 total: total,
                 deliveryAddress: address,
-                phone,
+                phone: normalizedPhone,
                 paymentMethod,
             };
-        await window.api.apiRequest('/api/orders', {
+            await window.api.apiRequest('/api/orders', {
                 method: 'POST',
                 body: orderPayload,
                 auth: true,
