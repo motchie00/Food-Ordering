@@ -1,11 +1,11 @@
-const { app, connectDB } = require('./app');
+const app = require('./app');
 
 let isReady = null;
 
 module.exports = async (req, res) => {
   try {
     if (!isReady) {
-      isReady = connectDB();
+      isReady = app.connectDB();
     }
     await isReady;
     return app(req, res);
