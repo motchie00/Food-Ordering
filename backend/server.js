@@ -11,7 +11,14 @@ module.exports = async (req, res) => {
     return app(req, res);
   } catch (error) {
     console.error('Serverless handler error:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    // Reset connection promise on error so next request can retry
+    if (error.message && error.message.includes('buffering timed out')) {
+      isReady = null;
+    }
+    res.status(500).json({ 
+      message: 'Internal Server Error', 
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    });
   }
 };
 

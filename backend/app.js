@@ -98,20 +98,43 @@ const connectDB = async () => {
     throw new Error('MONGODB_URI environment variable is not set');
   }
 
-  if (connectionPromise) {
-    await connectionPromise;
-  } else {
-    connectionPromise = mongoose.connect(process.env.MONGODB_URI).then(async () => {
-      console.log('Connected to MongoDB');
-      if (!adminInitialized) {
-        await initializeAdmin();
-        adminInitialized = true;
-      }
-    });
-    await connectionPromise;
+  // If already connected, return immediately
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
   }
 
-  return mongoose.connection;
+  // If connection is in progress, wait for it
+  if (connectionPromise) {
+    try {
+      await connectionPromise;
+      return mongoose.connection;
+    } catch (error) {
+      // If previous connection failed, reset and retry
+      connectionPromise = null;
+    }
+  }
+
+  // Create new connection with serverless-friendly options
+  connectionPromise = mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 10000,
+    maxPoolSize: 1,
+    minPoolSize: 0,
+  }).then(async () => {
+    console.log('Connected to MongoDB');
+    if (!adminInitialized) {
+      await initializeAdmin();
+      adminInitialized = true;
+    }
+    return mongoose.connection;
+  }).catch((error) => {
+    connectionPromise = null;
+    console.error('MongoDB connection error:', error.message);
+    throw error;
+  });
+
+  return connectionPromise;
 };
 
 app.connectDB = connectDB;
