@@ -10,6 +10,37 @@ let currentCategory = 'all';
 let availableCategories = [];
 let addToCartContext = { itemId: null };
 
+function setupSidebarToggle() {
+    const body = document.body;
+    const overlay = document.querySelector('.sidebar-overlay');
+    const toggles = document.querySelectorAll('.sidebar-toggle');
+    const closeSidebar = () => body.classList.remove('sidebar-open');
+
+    toggles.forEach(btn => {
+        btn.addEventListener('click', () => {
+            body.classList.toggle('sidebar-open');
+        });
+    });
+
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
+    }
+
+    document.querySelectorAll('.sidebar .menu-item').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992) {
+                closeSidebar();
+            }
+        });
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 992) {
+            closeSidebar();
+        }
+    });
+}
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', async function() {
     try {
@@ -23,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // If localStorage fails, still allow page to render
     }
 
+    setupSidebarToggle();
     await loadMenuFromAPI();
     await loadCategoriesFromAPI();
     renderCategoryButtons();
@@ -52,7 +84,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 // Show section
-function showSection(sectionId) {
+function showSection(sectionId, evt) {
     document.querySelectorAll('.content-section').forEach(section => {
         section.classList.remove('active');
     });
@@ -63,10 +95,13 @@ function showSection(sectionId) {
     }
     
     // Update active menu item
+    const triggerEvent = evt || window.event;
     document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.remove('active');
     });
-    event.target.classList.add('active');
+    if (triggerEvent && triggerEvent.target) {
+        triggerEvent.target.classList.add('active');
+    }
     
     // Update cart display if switching to cart
     if (sectionId === 'cart') {
@@ -142,13 +177,16 @@ function displayMenuItems(items = menuItems) {
 }
 
 // Filter by category
-function filterCategory(category) {
+function filterCategory(category, evt) {
     currentCategory = category;
     
     document.querySelectorAll('.category-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    event.target.classList.add('active');
+    const triggerEvent = evt || window.event;
+    if (triggerEvent && triggerEvent.target) {
+        triggerEvent.target.classList.add('active');
+    }
     
     displayMenuItems();
 }
@@ -177,13 +215,13 @@ function renderCategoryButtons() {
     const allBtn = document.createElement('button');
     allBtn.className = 'btn category-btn active';
     allBtn.textContent = 'All';
-    allBtn.onclick = function(e){ window.event = e; filterCategory('all'); };
+    allBtn.onclick = function(e){ filterCategory('all', e); };
     container.appendChild(allBtn);
     availableCategories.forEach(name => {
         const btn = document.createElement('button');
         btn.className = 'btn category-btn';
         btn.textContent = name;
-        btn.onclick = function(e){ window.event = e; filterCategory(name); };
+        btn.onclick = function(e){ filterCategory(name, e); };
         container.appendChild(btn);
     });
 }
