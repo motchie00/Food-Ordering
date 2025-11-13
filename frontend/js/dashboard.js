@@ -2,6 +2,15 @@ let currentMenuItemId = null;
 let menuItems = [];
 let categories = [];
 
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+    });
+}
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', async function() {
     // Auth guard
@@ -71,6 +80,7 @@ function displayMenuItems(items = menuItems) {
         const resolveImage = () => {
             if (!item.image) return '../assets/Logo.png';
             if (/^https?:\/\//i.test(item.image)) return item.image;
+            if (/^data:image\//i.test(item.image)) return item.image;
             return `${window.api.API_BASE_URL}/uploads/${item.image.replace(/^\/+/, '')}`;
         };
         const imgSrc = resolveImage();
@@ -273,17 +283,10 @@ async function createMenuItem() {
         // 1) Upload image if provided
         if (imageInput && imageInput.files && imageInput.files[0]) {
             try {
-                const fd = new FormData();
-                fd.append('image', imageInput.files[0]);
-                const uploadRes = await window.api.apiRequest('/api/uploads/image', {
-                    method: 'POST',
-                    body: fd,
-                    auth: true,
-                });
-                image = (uploadRes && uploadRes.filename) ? uploadRes.filename : '';
+                image = await readFileAsDataURL(imageInput.files[0]);
             } catch (uploadErr) {
-                console.error('Image upload failed:', uploadErr);
-                Swal.fire({ icon: 'error', title: 'Image upload failed', text: uploadErr.message || 'Unknown error' });
+                console.error('Image processing failed:', uploadErr);
+                Swal.fire({ icon: 'error', title: 'Image processing failed', text: uploadErr.message || 'Unknown error' });
                 return;
             }
         }
@@ -359,15 +362,12 @@ async function updateMenuItemFromForm() {
                 body.quantity = quantityValue;
             }
             if (imageInput && imageInput.files && imageInput.files[0]) {
-                const fd = new FormData();
-                fd.append('image', imageInput.files[0]);
-                const uploadRes = await window.api.apiRequest('/api/uploads/image', {
-                    method: 'POST',
-                    body: fd,
-                    auth: true,
-                });
-                if (uploadRes && uploadRes.filename) {
-                    body.image = uploadRes.filename;
+                try {
+                    body.image = await readFileAsDataURL(imageInput.files[0]);
+                } catch (uploadErr) {
+                    console.error('Image processing failed:', uploadErr);
+                    Swal.fire({ icon: 'error', title: 'Image processing failed', text: uploadErr.message || 'Unknown error' });
+                    return;
                 }
             }
             await window.api.apiRequest(`/api/menu/${currentMenuItemId}`, {
