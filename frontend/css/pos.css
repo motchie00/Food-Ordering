@@ -432,6 +432,21 @@ body {
     color: #000;
 }
 
+.badge-preparing {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+.badge-ready {
+    background-color: #20c997;
+    color: #fff;
+}
+
+.badge-outdelivery {
+    background-color: #6f42c1;
+    color: #fff;
+}
+
 .badge-completed {
     background-color: #198754;
     color: #fff;
