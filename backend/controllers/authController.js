@@ -1,80 +1,51 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { store, createId, removeById, updateById } = require('../storage/localStore');
+const User = require('../models/User');
 
 const MIN_PASSWORD_LENGTH = 8;
 
-const sanitizeUser = (user) => {
-  if (!user) return null;
-  const { password, _id, ...rest } = user;
-  return {
-    id: _id,
-    ...rest,
-  };
+const sanitizeUser = (userDoc) => {
+  if (!userDoc) return null;
+  const user = userDoc.toObject ? userDoc.toObject() : userDoc;
+  const { password, __v, _id, ...rest } = user;
+  return { id: _id?.toString() || user.id, ...rest };
 };
 
-const findUserByEmail = (email) =>
-  store.users.find((user) => user.email && user.email.toLowerCase() === email.toLowerCase());
-
-const findUserByUsername = (username) =>
-  store.users.find(
-    (user) => user.username && user.username.toLowerCase() === username.toLowerCase()
-  );
-
-const findUserById = (id) => store.users.find((user) => user._id === id);
-
-// @desc    Register a new user
-// @access  Public
 const register = async (req, res) => {
   try {
-    const { email, username, password, role, name } = req.body;
-
-    // Validation based on role
+    const { email, username, password, role, name } = req.body || {};
     const userRole = role || 'customer';
 
+    if (!password || password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long`,
+      });
+    }
+
     if (userRole === 'customer') {
-      // Customer: requires name, email and password
-      if (!name || !email || !password) {
+      if (!name || !email) {
         return res.status(400).json({ message: 'Please provide name, email and password' });
       }
 
-      // Validate password length (minimum 8 characters)
-      if (password.length < MIN_PASSWORD_LENGTH) {
-        return res.status(400).json({
-          message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long`,
-        });
-      }
-
-      // Check if user already exists
-      const existingUser = email ? findUserByEmail(email) : null;
-      if (existingUser) {
+      const existing = await User.findOne({ email: email.toLowerCase() }).lean();
+      if (existing) {
         return res.status(400).json({ message: 'User already exists with this email' });
       }
     } else if (userRole === 'staff' || userRole === 'admin') {
-      // Staff/Admin: requires username and password
-      if (!username || !password) {
+      if (!username) {
         return res.status(400).json({ message: 'Please provide username and password' });
       }
 
-      // Validate password length (minimum 8 characters)
-      if (password.length < MIN_PASSWORD_LENGTH) {
-        return res.status(400).json({
-          message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long`,
-        });
-      }
-
-      // Check if user already exists
-      const existingUser = username ? findUserByUsername(username) : null;
-      if (existingUser) {
+      const existing = await User.findOne({ username: username.toLowerCase() }).lean();
+      if (existing) {
         return res.status(400).json({ message: 'User already exists with this username' });
       }
+    } else {
+      return res.status(400).json({ message: 'Invalid role specified' });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user object based on role
     const userData = {
       password: hashedPassword,
       role: userRole,
@@ -82,25 +53,17 @@ const register = async (req, res) => {
 
     if (userRole === 'customer') {
       userData.name = name;
-      userData.email = email;
+      userData.email = email.toLowerCase();
     } else {
-      userData.username = username;
+      userData.username = username.toLowerCase();
     }
 
-    const timestamp = new Date().toISOString();
-    const user = {
-      _id: createId(),
-      ...userData,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-    store.users.push(user);
+    const user = await User.create(userData);
 
-    // Create token
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user._id.toString(), role: user.role },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
+      { expiresIn: '24h' },
     );
 
     res.status(201).json({
@@ -109,49 +72,49 @@ const register = async (req, res) => {
       user: sanitizeUser(user),
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
     console.error('Register error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// @desc    Login user
-// @access  Public
 const login = async (req, res) => {
   try {
-    const { email, username, password, role } = req.body;
+    const { email, username, password } = req.body || {};
 
-    // Validation
     if (!password) {
       return res.status(400).json({ message: 'Please provide password' });
     }
 
     if (!email && !username) {
-      return res.status(400).json({ message: 'Please provide either email (for customer) or username (for staff/admin)' });
+      return res.status(400).json({
+        message: 'Please provide either email (for customer) or username (for staff/admin)',
+      });
     }
 
-    // Find user based on email or username
-    let user;
+    let query;
     if (email) {
-      user = findUserByEmail(email);
-    } else if (username) {
-      user = findUserByUsername(username);
+      query = { email: email.toLowerCase() };
+    } else {
+      query = { username: username.toLowerCase() };
     }
 
+    const user = await User.findOne(query).lean();
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Create token
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user._id.toString(), role: user.role },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
+      { expiresIn: '24h' },
     );
 
     res.json({
@@ -165,11 +128,9 @@ const login = async (req, res) => {
   }
 };
 
-// @desc    Get user profile
-// @access  Private
 const getProfile = async (req, res) => {
   try {
-    const user = findUserById(req.user.userId);
+    const user = await User.findById(req.user.userId).lean();
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -180,31 +141,27 @@ const getProfile = async (req, res) => {
   }
 };
 
-// @desc    Get all users
-// @access  Private (Admin only)
 const getAllUsers = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied. Admin only.' });
     }
 
-    const users = store.users.map(sanitizeUser);
-    res.json({ users, count: users.length });
+    const users = await User.find().lean();
+    res.json({ users: users.map(sanitizeUser), count: users.length });
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// @desc    Delete a user (Admin only). Admin accounts cannot be deleted
-// @access  Private (Admin)
 const deleteUser = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied. Admin only.' });
     }
 
-    const user = findUserById(req.params.id);
+    const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -213,7 +170,7 @@ const deleteUser = async (req, res) => {
       return res.status(403).json({ message: 'Cannot delete admin accounts' });
     }
 
-    removeById('users', req.params.id);
+    await User.deleteOne({ _id: user._id });
     res.json({ message: 'User deleted', id: req.params.id });
   } catch (error) {
     console.error('Delete user error:', error);
@@ -221,10 +178,12 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// @desc    Create staff or admin account (Admin only)
-// @access  Private (Admin)
 const createStaffAccount = async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
     const { username, password, role } = req.body || {};
 
     if (!username || !password) {
@@ -237,40 +196,39 @@ const createStaffAccount = async (req, res) => {
       });
     }
 
-    if (findUserByUsername(username)) {
+    const existing = await User.findOne({ username: username.toLowerCase() }).lean();
+    if (existing) {
       return res.status(400).json({ message: 'User already exists with this username' });
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
     const accountRole = role === 'admin' ? 'admin' : 'staff';
-    const timestamp = new Date().toISOString();
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
 
-    const user = {
-      _id: createId(),
-      username,
+    const user = await User.create({
+      username: username.toLowerCase(),
       password: hashedPassword,
       role: accountRole,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-
-    store.users.push(user);
+    });
 
     res.status(201).json({
-      message: `${accountRole === 'admin' ? 'Admin' : 'Staff'} account created`,
+      message: `${accountRole === 'admin' ? 'Admin' : 'Staff'} account created` ,
       user: sanitizeUser(user),
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'User already exists with this username' });
+    }
     console.error('Create staff account error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// @desc    Create customer account (Admin only)
-// @access  Private (Admin)
 const createCustomerAccount = async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
     const { name, email, password } = req.body || {};
 
     if (!name || !email || !password) {
@@ -283,56 +241,53 @@ const createCustomerAccount = async (req, res) => {
       });
     }
 
-    if (findUserByEmail(email)) {
+    const existing = await User.findOne({ email: email.toLowerCase() }).lean();
+    if (existing) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    const timestamp = new Date().toISOString();
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const user = {
-      _id: createId(),
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({
       name,
-      email,
+      email: email.toLowerCase(),
       password: hashedPassword,
       role: 'customer',
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-
-    store.users.push(user);
+    });
 
     res.status(201).json({
       message: 'Customer account created',
       user: sanitizeUser(user),
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
     console.error('Create customer account error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// @desc    Get all customers (Admin only)
-// @access  Private (Admin)
 const getCustomers = async (req, res) => {
   try {
-    const customers = store.users
-      .filter((user) => user.role === 'customer')
-      .map(sanitizeUser);
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
 
-    res.json({ customers, count: customers.length });
+    const customers = await User.find({ role: 'customer' }).lean();
+    res.json({ customers: customers.map(sanitizeUser), count: customers.length });
   } catch (error) {
     console.error('Get customers error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// @desc    Get a single customer (Admin only)
-// @access  Private (Admin)
 const getCustomer = async (req, res) => {
   try {
-    const customer = findUserById(req.params.id);
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
+    const customer = await User.findById(req.params.id).lean();
     if (!customer || customer.role !== 'customer') {
       return res.status(404).json({ message: 'Customer not found' });
     }
@@ -344,35 +299,35 @@ const getCustomer = async (req, res) => {
   }
 };
 
-// @desc    Update a customer (Admin only)
-// @access  Private (Admin)
 const updateCustomer = async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
     const { name, email, password } = req.body || {};
-    const customer = findUserById(req.params.id);
+    const customer = await User.findById(req.params.id);
 
     if (!customer || customer.role !== 'customer') {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    const updates = {};
-
     if (typeof name === 'string') {
-      updates.name = name.trim();
+      customer.name = name.trim();
     }
 
     if (typeof email === 'string') {
-      const trimmedEmail = email.trim();
+      const trimmedEmail = email.trim().toLowerCase();
       if (!trimmedEmail) {
         return res.status(400).json({ message: 'Email cannot be empty' });
       }
 
-      const existingEmailUser = findUserByEmail(trimmedEmail);
-      if (existingEmailUser && existingEmailUser._id !== customer._id) {
+      const existing = await User.findOne({ email: trimmedEmail, _id: { $ne: customer._id } });
+      if (existing) {
         return res.status(400).json({ message: 'Another user already uses this email' });
       }
 
-      updates.email = trimmedEmail;
+      customer.email = trimmedEmail;
     }
 
     if (typeof password === 'string' && password.length > 0) {
@@ -381,23 +336,19 @@ const updateCustomer = async (req, res) => {
           message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long`,
         });
       }
-      const salt = await bcrypt.genSalt(10);
-      updates.password = await bcrypt.hash(password, salt);
+      customer.password = await bcrypt.hash(password, 10);
     }
 
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ message: 'No valid fields provided for update' });
-    }
-
-    updates.updatedAt = new Date().toISOString();
-
-    const updatedCustomer = updateById('users', req.params.id, updates);
+    await customer.save();
 
     res.json({
       message: 'Customer updated',
-      customer: sanitizeUser(updatedCustomer),
+      customer: sanitizeUser(customer),
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Another user already uses this email' });
+    }
     console.error('Update customer error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }

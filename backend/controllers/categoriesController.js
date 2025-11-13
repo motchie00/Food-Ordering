@@ -1,4 +1,4 @@
-const { store, createId, removeById } = require('../storage/localStore');
+const Category = require('../models/Category');
 
 function toSlug(name) {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -6,9 +6,9 @@ function toSlug(name) {
 
 const listCategories = async (req, res) => {
   try {
-    const categories = store.categories
-      .filter((category) => category.isActive !== false)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const categories = await Category.find({ $or: [{ isActive: { $ne: false } }, { isActive: { $exists: false } }] })
+      .sort({ name: 1 })
+      .lean();
     res.json({ categories, count: categories.length });
   } catch (error) {
     console.error('List categories error:', error);
@@ -22,27 +22,25 @@ const createCategory = async (req, res) => {
     if (!name || !name.trim()) {
       return res.status(400).json({ message: 'name is required' });
     }
-    const slug = toSlug(name);
-    const existing = store.categories.find(
-      (category) =>
-        category.name.toLowerCase() === name.trim().toLowerCase() ||
-        category.slug === slug
-    );
+    const trimmedName = name.trim();
+    const slug = toSlug(trimmedName);
+
+    const existing = await Category.findOne({ $or: [{ name: new RegExp(`^${trimmedName}$`, 'i') }, { slug }] }).lean();
     if (existing) {
       return res.status(400).json({ message: 'Category already exists' });
     }
-    const timestamp = new Date().toISOString();
-    const category = {
-      _id: createId(),
-      name: name.trim(),
+
+    const category = await Category.create({
+      name: trimmedName,
       slug,
       isActive: true,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-    store.categories.push(category);
+    });
+
     res.status(201).json({ message: 'Category created', category });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Category already exists' });
+    }
     console.error('Create category error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -50,7 +48,7 @@ const createCategory = async (req, res) => {
 
 const deleteCategory = async (req, res) => {
   try {
-    const category = removeById('categories', req.params.id);
+    const category = await Category.findByIdAndDelete(req.params.id).lean();
     if (!category) return res.status(404).json({ message: 'Category not found' });
     res.json({ message: 'Category deleted', category });
   } catch (error) {

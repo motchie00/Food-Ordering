@@ -1,5 +1,26 @@
 const mongoose = require('mongoose');
 
+const orderItemSchema = new mongoose.Schema({
+  menuItem: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MenuItem',
+  },
+  name: {
+    type: String,
+    required: true,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+}, { _id: false });
+
 const orderSchema = new mongoose.Schema({
   orderCode: {
     type: String,
@@ -12,33 +33,23 @@ const orderSchema = new mongoose.Schema({
     required: true,
   },
   restaurant: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Restaurant',
-    required: true,
+    type: String,
+    default: 'default-restaurant',
+    trim: true,
   },
-  items: [{
-    menuItem: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'MenuItem',
-    },
-    quantity: {
-      type: Number,
-      required: true,
-    },
-    price: {
-      type: Number,
-      required: true,
-    },
-  }],
+  items: [orderItemSchema],
   totalAmount: {
     type: Number,
     required: true,
+    min: 0,
   },
   deliveryAddress: {
     type: String,
+    default: '',
   },
   phone: {
     type: String,
+    default: '',
   },
   status: {
     type: String,
@@ -53,6 +64,7 @@ const orderSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     enum: ['cash', 'card', 'online', 'gcash', 'maya'],
+    default: 'cash',
   },
 }, {
   timestamps: true,
