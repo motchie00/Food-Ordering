@@ -495,6 +495,31 @@ async function confirmOrder() {
     const selected = methodEl ? methodEl.value : 'cod';
     const paymentMethod = selected === 'cod' ? 'cash' : 'gcash';
     
+    const normalizedPhone = phone.startsWith('+63') ? phone : phone.startsWith('09') ? '+63' + phone.slice(1) : phone;
+    const phonePattern = /^\+63\d{10}$/;
+    if (!phonePattern.test(normalizedPhone)) {
+        if (phoneEl) phoneEl.classList.add('is-invalid');
+        await Swal.fire({
+            icon: 'info',
+            title: 'Invalid phone number',
+            text: 'Please enter a valid 11-digit Philippine mobile number starting with 09.',
+        });
+        return;
+    }
+    if (phoneEl) phoneEl.classList.remove('is-invalid');
+
+    const phonePattern = /^(09\d{9}|\+?63\d{10})$/;
+    if (!phonePattern.test(phone)) {
+        if (phoneEl) phoneEl.classList.add('is-invalid');
+        await Swal.fire({
+            icon: 'info',
+            title: 'Invalid phone number',
+            text: 'Please enter an 11-digit Philippine mobile number (e.g., 09XXXXXXXXX).',
+        });
+        return;
+    }
+    if (phoneEl) phoneEl.classList.remove('is-invalid');
+
     try {
         if (window.api) {
             const orderPayload = {
@@ -504,7 +529,7 @@ async function confirmOrder() {
                 phone,
                 paymentMethod,
             };
-            await window.api.apiRequest('/api/orders', {
+        await window.api.apiRequest('/api/orders', {
                 method: 'POST',
                 body: orderPayload,
                 auth: true,
@@ -602,14 +627,14 @@ async function loadCustomerOrders() {
 function getStatusBadge(status) {
     const badges = {
         'pending': '<span class="badge badge-pending">Pending</span>',
-        'preparing': '<span class="badge badge-processing">Preparing</span>',
-        'ready': '<span class="badge badge-processing">Ready</span>',
-        'out-for-delivery': '<span class="badge badge-processing">Out for Delivery</span>',
+        'preparing': '<span class="badge badge-preparing">Preparing</span>',
+        'ready': '<span class="badge badge-ready">Ready</span>',
+        'out-for-delivery': '<span class="badge badge-outdelivery">Out for Delivery</span>',
         'delivered': '<span class="badge badge-completed">Delivered</span>',
         'cancelled': '<span class="badge badge-cancelled">Cancelled</span>'
     };
     // Backward compatibility: show Preparing for legacy 'processing'
-    if (status === 'processing') return '<span class="badge badge-processing">Preparing</span>';
+    if (status === 'processing') return '<span class="badge badge-preparing">Preparing</span>';
     if (status === 'completed') return '<span class="badge badge-completed">Delivered</span>';
     return badges[status] || '';
 }

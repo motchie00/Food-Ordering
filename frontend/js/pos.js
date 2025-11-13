@@ -215,9 +215,9 @@ function renderOrdersPagination(total, page, totalPages) {
 function getStatusBadge(status) {
     const badges = {
         'pending': '<span class="badge badge-pending">Pending</span>',
-        'preparing': '<span class="badge badge-processing">Preparing</span>',
-        'ready': '<span class="badge badge-processing">Ready</span>',
-        'out-for-delivery': '<span class="badge badge-processing">Out for Delivery</span>',
+        'preparing': '<span class="badge badge-preparing">Preparing</span>',
+        'ready': '<span class="badge badge-ready">Ready</span>',
+        'out-for-delivery': '<span class="badge badge-outdelivery">Out for Delivery</span>',
         'delivered': '<span class="badge badge-completed">Delivered</span>',
         'cancelled': '<span class="badge badge-cancelled">Cancelled</span>'
     };
