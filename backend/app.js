@@ -114,13 +114,13 @@ const connectDB = async () => {
     }
   }
 
-  // Create new connection with serverless-friendly options
+  // Create new connection with appropriate options for long-running server
   connectionPromise = mongoose.connect(process.env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 10000,
     socketTimeoutMS: 45000,
-    connectTimeoutMS: 10000,
-    maxPoolSize: 1,
-    minPoolSize: 0,
+    connectTimeoutMS: 30000,
+    maxPoolSize: 10,
+    minPoolSize: 1,
   }).then(async () => {
     console.log('Connected to MongoDB');
     if (!adminInitialized) {
