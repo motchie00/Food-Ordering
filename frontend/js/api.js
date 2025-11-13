@@ -1,6 +1,13 @@
 // Simple API helper for frontend-backend communication (fixed to backend port)
-const API_BASE_URL = 'https://backend-food-rho.vercel.app/';
+const API_BASE_URL = 'https://backend-food-rho.vercel.app';
 //const API_BASE_URL = 'http://localhost:3000';
+
+function buildUrl(path) {
+  const trimmedBase = API_BASE_URL.replace(/\/+$/, '');
+  const normalizedPath = typeof path === 'string' ? path : '';
+  if (!normalizedPath) return trimmedBase;
+  return `${trimmedBase}${normalizedPath.startsWith('/') ? '' : '/'}${normalizedPath}`;
+}
 
 function getAuthToken() {
   try {
@@ -11,7 +18,7 @@ function getAuthToken() {
 }
 
 async function apiRequest(path, { method = 'GET', body, headers = {}, auth = false } = {}) {
-  const url = `${API_BASE_URL}${path}`;
+  const url = buildUrl(path);
   const requestHeaders = { ...headers };
   // Only set JSON content-type if body is not FormData
   const isFormData = (typeof FormData !== 'undefined') && (body instanceof FormData);
@@ -41,6 +48,6 @@ async function apiRequest(path, { method = 'GET', body, headers = {}, auth = fal
   return data;
 }
 
-window.api = { apiRequest, API_BASE_URL, getAuthToken };
+window.api = { apiRequest, API_BASE_URL, getAuthToken, buildUrl };
 
 
