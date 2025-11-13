@@ -1,10 +1,10 @@
-const { app, connectDB } = require('./app');
+const app = require('./app');
 
 const PORT = process.env.PORT || 3000;
 
 const start = async () => {
   try {
-    await connectDB();
+    await app.connectDB();
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });

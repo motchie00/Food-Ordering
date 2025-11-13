@@ -114,4 +114,6 @@ const connectDB = async () => {
   return mongoose.connection;
 };
 
-module.exports = { app, connectDB };
+app.connectDB = connectDB;
+
+module.exports = app;
